@@ -32,18 +32,20 @@ func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) Co
 		inputTypeDefs = append(inputTypeDefs, endpointInputRecord)
 
 		// Create a signature for this endpoint
-		endpointSignature := compiler.createEndpointSignature(endpoint, endpointInputType)
+		inputVarName := "input"
+		endpointSignature := compiler.createEndpointSignature(endpoint, endpointInputType, inputVarName)
 
 		// append the endpoint signature to the interface
 		serviceInterface.Functions = append(serviceInterface.Functions, endpointSignature)
 
 		// create an implementation for this endpoint
+		// TODO break hardcoding of given
 		request := HttpRequest{
 			Method:          endpoint.Method,
 			UrlTemplate:     endpoint.Endpoint,
 			BaseEndpointVar: "",
 			ClientVar:       "http",
-			InputVar:        "input",
+			InputVar:        inputVarName,
 			RequestBody:     endpoint.RequestBody.Type,
 			ResponseBody:    endpoint.ResponseBody.Type,
 		}
@@ -118,6 +120,7 @@ func (compiler *ServiceCompiler) createEndpointInputPayload(endpoint APIEndpoint
 	// TODO ensure proper casing endpoint
 	typeName := fmt.Sprintf("%sInput", strcase.ToCamel(endpoint.Name))
 
+	bodyPropName := "body"
 	record := Record{
 		Name:      typeName,
 		Variables: make(map[string]VariableDecl),
@@ -127,8 +130,8 @@ func (compiler *ServiceCompiler) createEndpointInputPayload(endpoint APIEndpoint
 
 	// set the body if needed
 	if endpoint.RequestBody.Type.TypeID != TypeID_VOID {
-		record.Variables["body"] = VariableDecl{
-			Name: "body",
+		record.Variables[bodyPropName] = VariableDecl{
+			Name: bodyPropName,
 			Type: TypeDecl{
 				Type: endpoint.RequestBody.Type,
 			},
@@ -154,14 +157,14 @@ func (compiler *ServiceCompiler) createEndpointInputPayload(endpoint APIEndpoint
 	return record, inputType
 }
 
-func (compiler *ServiceCompiler) createEndpointSignature(endpoint APIEndpoint, inputType DynamicType) FunctionSignature {
+func (compiler *ServiceCompiler) createEndpointSignature(endpoint APIEndpoint, inputType DynamicType, inputVarName string) FunctionSignature {
 
 	return FunctionSignature{
 		Name: endpoint.Name,
 		Ret:  endpoint.ResponseBody.Type,
 		Args: []VariableDecl{
 			{
-				Name: "input",
+				Name: inputVarName,
 				Type: TypeDecl{
 					Type: inputType,
 				},
