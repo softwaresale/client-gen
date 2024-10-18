@@ -24,6 +24,11 @@ func (formatter *JSCodeFormatter) Format(service codegen.CompiledService) error 
 	// format this service
 	var err error
 
+	err = formatter.formatImports(service.Imports)
+	if err != nil {
+		return fmt.Errorf("failed to format imports: %w", err)
+	}
+
 	// first, lift all inputs
 	for _, record := range service.InputRecords {
 		err = formatter.formatRecord(record)
@@ -44,6 +49,15 @@ func (formatter *JSCodeFormatter) Format(service codegen.CompiledService) error 
 	err = formatter.formatServiceImplementation(service.Implementation)
 	if err != nil {
 		return fmt.Errorf("failed to format service impl '%s': %w", service.Implementation.Name, err)
+	}
+
+	return nil
+}
+
+func (formatter *JSCodeFormatter) formatImports(imports codegen.ImportBlock) error {
+	for pkg, types := range imports.Packages {
+		typesStr := strings.Join(types, ", ")
+		formatter.infallibleFprintf("import { %s } from '%s';\n", typesStr, pkg)
 	}
 
 	return nil

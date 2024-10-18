@@ -12,6 +12,11 @@ type VariableDecl struct {
 	Type TypeDecl
 }
 
+// ImportBlock defines a language import statement. This ensures that a service file has all necessary imports
+type ImportBlock struct {
+	Packages map[string][]string
+}
+
 // Record is a simple type that holds key-value properties
 type Record struct {
 	Name      string

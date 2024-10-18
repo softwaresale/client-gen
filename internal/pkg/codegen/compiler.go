@@ -11,14 +11,16 @@ type CompiledService struct {
 	InputRecords     []Record
 	ServiceInterface Interface
 	Implementation   Class
+	Imports          ImportBlock
 }
 
 type ServiceCompiler struct {
 }
 
-func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) CompiledService {
+func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) (*CompiledService, error) {
 
 	// start an interface
+	var err error
 	var inputTypeDefs []Record
 	serviceInterface, serviceInterfaceType := compiler.createServiceInterface(serviceDef)
 
@@ -61,11 +63,42 @@ func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) Co
 	}
 
 	// create endpoint function signatures for all endpoints
-	return CompiledService{
+	compiledService := CompiledService{
 		Implementation:   serviceClass,
 		ServiceInterface: serviceInterface,
 		InputRecords:     inputTypeDefs,
 	}
+
+	// resolve all imports
+	typeMap := map[string]string{
+		"Observable":  "rxjs",
+		"HttpClient":  "@angular/common/http",
+		"from":        "rxjs",
+		"PersonModel": "lib/common",
+	}
+
+	typeFilter := func(typeReference string) bool {
+		_, exists := typeMap[typeReference]
+		return exists
+	}
+
+	packageResolver := func(typeReference string) (string, error) {
+		pkg, exists := typeMap[typeReference]
+		if !exists {
+			return "", fmt.Errorf("could not resolve type: %s", typeReference)
+		}
+
+		return pkg, nil
+	}
+
+	importBlock, err := ResolveImports(compiledService, packageResolver, typeFilter)
+	if err != nil {
+		return nil, fmt.Errorf("error while resolving imports: %w", err)
+	}
+
+	compiledService.Imports = *importBlock
+
+	return &compiledService, nil
 }
 
 func (compiler *ServiceCompiler) createServiceInterface(definition ServiceDefinition) (Interface, DynamicType) {

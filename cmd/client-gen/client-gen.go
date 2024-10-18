@@ -65,11 +65,14 @@ func main() {
 
 	serviceCompiler := codegen.ServiceCompiler{}
 
-	compiledService := serviceCompiler.CompileService(service)
+	compiledService, err := serviceCompiler.CompileService(service)
+	if err != nil {
+		panic(err)
+	}
 
 	formatter := jscodegen.NewJSCodeFormatter(os.Stdout, jscodegen.JSTypeMapper{})
 
-	err := formatter.Format(compiledService)
+	err = formatter.Format(*compiledService)
 	if err != nil {
 		panic(err)
 	}

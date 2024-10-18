@@ -39,6 +39,16 @@ func (tp DynamicType) ArrayElementTp() DynamicType {
 	return tp.Inner[0]
 }
 
+func (tp DynamicType) TypeReferences() []string {
+	references := []string{tp.Reference}
+	for _, inner := range tp.Inner {
+		inner := inner.TypeReferences()
+		references = append(references, inner...)
+	}
+
+	return references
+}
+
 // ITypeMapper provides an interface for mapping dynamic types into language-specific types.
 type ITypeMapper interface {
 	Convert(dtype DynamicType) (string, error)
