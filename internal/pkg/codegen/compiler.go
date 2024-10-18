@@ -161,7 +161,11 @@ func (compiler *ServiceCompiler) createEndpointSignature(endpoint APIEndpoint, i
 
 	return FunctionSignature{
 		Name: endpoint.Name,
-		Ret:  endpoint.ResponseBody.Type,
+		Ret: DynamicType{
+			TypeID:    TypeID_GENERIC,
+			Reference: "Observable",
+			Inner:     []DynamicType{endpoint.ResponseBody.Type},
+		},
 		Args: []VariableDecl{
 			{
 				Name: inputVarName,
