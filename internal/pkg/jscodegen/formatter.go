@@ -29,6 +29,8 @@ func (formatter *JSCodeFormatter) Format(service codegen.CompiledService) error 
 		return fmt.Errorf("failed to format imports: %w", err)
 	}
 
+	formatter.infallibleFprint("\n")
+
 	// first, lift all inputs
 	for _, record := range service.InputRecords {
 		err = formatter.formatRecord(record)

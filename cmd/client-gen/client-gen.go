@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
 	"github.com/softwaresale/client-gen/v2/internal/pkg/jscodegen"
 	"net/http"
@@ -60,10 +61,67 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:     "updateModel",
+				Endpoint: "/api/v1/person/{{id}}",
+				Method:   http.MethodPut,
+				PathVariables: map[string]codegen.RequestValue{
+					"id": {
+						Type: codegen.DynamicType{
+							TypeID: codegen.TypeID_STRING,
+						},
+						Required: true,
+					},
+				},
+				RequestBody: codegen.RequestValue{
+					Type: codegen.DynamicType{
+						TypeID:    codegen.TypeID_USER,
+						Reference: "PersonModel",
+					},
+					Required: true,
+				},
+				ResponseBody: codegen.RequestValue{
+					Type: codegen.DynamicType{
+						TypeID:    codegen.TypeID_USER,
+						Reference: "PersonModel",
+					},
+					Required: true,
+				},
+			},
 		},
 	}
 
-	serviceCompiler := codegen.ServiceCompiler{}
+	definedTypes := map[string]string{
+		"PersonModel": "lib/common",
+	}
+
+	resolver := codegen.ComposePackageResolver(
+		jscodegen.WellKnownTypeResolver,
+		func(typeRef string) (string, error) {
+			pkg, exists := definedTypes[typeRef]
+			if !exists {
+				return "", fmt.Errorf("failed to resolve type '%s'", typeRef)
+			}
+
+			return pkg, nil
+		},
+	)
+
+	typeManager := codegen.TypeManager{
+		Filter: func(typeRef string) bool {
+			if len(typeRef) == 0 {
+				return false
+			}
+
+			_, err := resolver(typeRef)
+			return err == nil
+		},
+		PkgResolver: resolver,
+	}
+
+	serviceCompiler := codegen.ServiceCompiler{
+		TypeManager: typeManager,
+	}
 
 	compiledService, err := serviceCompiler.CompileService(service)
 	if err != nil {

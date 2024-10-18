@@ -50,3 +50,14 @@ func (mapper JSTypeMapper) Convert(dtype codegen.DynamicType) (string, error) {
 
 	return typeStr, nil
 }
+
+func WellKnownTypeResolver(typeRef string) (string, error) {
+	switch typeRef {
+	case "Observable":
+		return "rxjs", nil
+	case "HttpClient":
+		return "@angular/common/http", nil
+	default:
+		return "", fmt.Errorf("type %s is not well-known", typeRef)
+	}
+}

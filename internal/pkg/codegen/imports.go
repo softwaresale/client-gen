@@ -5,6 +5,32 @@ import "fmt"
 type TypeFilter func(string) bool
 type PackageResolver func(string) (string, error)
 
+type TypeManager struct {
+	Filter      TypeFilter
+	PkgResolver PackageResolver
+}
+
+func ComposePackageResolver(resolvers ...PackageResolver) PackageResolver {
+	return func(pkg string) (string, error) {
+
+		var errs []error
+
+		for _, resolver := range resolvers {
+			resolved, err := resolver(pkg)
+			if err == nil {
+				return resolved, nil
+			}
+
+			// otherwise, append the error to the list
+			errs = append(errs, err)
+		}
+
+		// if we got all the way through, we failed
+
+		return "", fmt.Errorf("failed to resolve package %s", pkg)
+	}
+}
+
 // ResolveImports - Given a
 func ResolveImports(service CompiledService, resolver PackageResolver, typeFilter TypeFilter) (*ImportBlock, error) {
 	uniqueReferences := collectTypes(service)

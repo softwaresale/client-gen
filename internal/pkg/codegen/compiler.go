@@ -15,6 +15,7 @@ type CompiledService struct {
 }
 
 type ServiceCompiler struct {
+	TypeManager TypeManager
 }
 
 func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) (*CompiledService, error) {
@@ -69,29 +70,7 @@ func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) (*
 		InputRecords:     inputTypeDefs,
 	}
 
-	// resolve all imports
-	typeMap := map[string]string{
-		"Observable":  "rxjs",
-		"HttpClient":  "@angular/common/http",
-		"from":        "rxjs",
-		"PersonModel": "lib/common",
-	}
-
-	typeFilter := func(typeReference string) bool {
-		_, exists := typeMap[typeReference]
-		return exists
-	}
-
-	packageResolver := func(typeReference string) (string, error) {
-		pkg, exists := typeMap[typeReference]
-		if !exists {
-			return "", fmt.Errorf("could not resolve type: %s", typeReference)
-		}
-
-		return pkg, nil
-	}
-
-	importBlock, err := ResolveImports(compiledService, packageResolver, typeFilter)
+	importBlock, err := ResolveImports(compiledService, compiler.TypeManager.PkgResolver, compiler.TypeManager.Filter)
 	if err != nil {
 		return nil, fmt.Errorf("error while resolving imports: %w", err)
 	}
