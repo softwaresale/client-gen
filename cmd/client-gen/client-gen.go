@@ -1,50 +1,65 @@
 package main
 
 import (
-	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/pkg/jscodegen"
 	"net/http"
+	"os"
 )
 
 func main() {
-	endpoint := codegen.APIEndpoint{
-		Name:     "GetModels",
-		Endpoint: "/api/v1/person/{{age}}/name/{{name}}/somethingelse",
-		Method:   http.MethodGet,
-		PathVariables: map[string]codegen.RequestValue{
-			"age": {
-				Type: codegen.DynamicType{
-					TypeID: codegen.TypeID_STRING,
-				},
-				Required: true,
-			},
-			"name": {
-				Type: codegen.DynamicType{
-					TypeID: codegen.TypeID_STRING,
-				},
-				Required: true,
-			},
-		},
-		RequestBody: codegen.RequestValue{
-			Type: codegen.DynamicType{
-				TypeID: codegen.TypeID_VOID,
-			},
-			Required: false,
-		},
-		ResponseBody: codegen.RequestValue{
-			Type: codegen.DynamicType{
-				TypeID:    codegen.TypeID_STRING,
-				Reference: "",
-			},
-		},
-		QueryVariables: nil,
-	}
-
 	service := codegen.ServiceDefinition{
-		Name:    "ModelsService",
-		BaseURL: "/api/v1/models",
+		Name: "ModelsService",
 		Endpoints: []codegen.APIEndpoint{
-			endpoint,
+			{
+				Name:     "getModels",
+				Endpoint: "/api/v1/person/{{age}}/name/{{name}}/somethingelse",
+				Method:   http.MethodGet,
+				PathVariables: map[string]codegen.RequestValue{
+					"age": {
+						Type: codegen.DynamicType{
+							TypeID: codegen.TypeID_STRING,
+						},
+						Required: true,
+					},
+					"name": {
+						Type: codegen.DynamicType{
+							TypeID: codegen.TypeID_STRING,
+						},
+						Required: true,
+					},
+				},
+				RequestBody: codegen.RequestValue{
+					Type: codegen.DynamicType{
+						TypeID: codegen.TypeID_VOID,
+					},
+					Required: false,
+				},
+				ResponseBody: codegen.RequestValue{
+					Type: codegen.DynamicType{
+						TypeID:    codegen.TypeID_STRING,
+						Reference: "",
+					},
+				},
+			},
+			{
+				Name:     "createModel",
+				Endpoint: "/api/v1/person",
+				Method:   http.MethodPost,
+				RequestBody: codegen.RequestValue{
+					Type: codegen.DynamicType{
+						TypeID:    codegen.TypeID_USER,
+						Reference: "PersonModel",
+					},
+					Required: true,
+				},
+				ResponseBody: codegen.RequestValue{
+					Type: codegen.DynamicType{
+						TypeID:    codegen.TypeID_USER,
+						Reference: "PersonModel",
+					},
+				},
+			},
 		},
 	}
 
@@ -52,5 +67,10 @@ func main() {
 
 	compiledService := serviceCompiler.CompileService(service)
 
-	fmt.Printf("%v\n", compiledService)
+	formatter := jscodegen.NewJSCodeFormatter(os.Stdout, jscodegen.JSTypeMapper{})
+
+	err := formatter.Format(compiledService)
+	if err != nil {
+		panic(err)
+	}
 }
