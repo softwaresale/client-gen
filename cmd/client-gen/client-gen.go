@@ -1,10 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
-	"github.com/softwaresale/client-gen/v2/internal/pkg/jscodegen"
 	"net/http"
-	"os"
 )
 
 func main() {
@@ -49,18 +48,9 @@ func main() {
 		},
 	}
 
-	typeCache := codegen.NewUserTypeCache()
-	generator, _ := jscodegen.NewJSCodeGenerator(os.Stdout, typeCache)
+	serviceCompiler := codegen.ServiceCompiler{}
 
-	inputType, err := generator.GenerateInputType(endpoint)
-	if err != nil {
-		panic(err)
-	}
+	compiledService := serviceCompiler.CompileService(service)
 
-	typeCache.CacheEndpointInputType(endpoint, *inputType)
-
-	err = generator.GenerateServiceInterface(service)
-	if err != nil {
-		panic(err)
-	}
+	fmt.Printf("%v\n", compiledService)
 }
