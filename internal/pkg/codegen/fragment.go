@@ -28,7 +28,7 @@ type FunctionSignature struct {
 // FunctionImpl is a function with an actual implementation
 type FunctionImpl struct {
 	Signature FunctionSignature
-	// TODO body
+	HttpCall  HttpRequest
 }
 
 // Interface is a functional type that has functions that another type inherits
@@ -40,7 +40,19 @@ type Interface struct {
 // Class is a specification of a class with actual implementation
 type Class struct {
 	Name                string
+	Interfaces          []DynamicType
 	Properties          []VariableDecl
 	InjectionProperties []VariableDecl
 	Methods             []FunctionImpl
+}
+
+// HttpRequest models an http client call
+type HttpRequest struct {
+	Method          string
+	UrlTemplate     string
+	BaseEndpointVar string
+	ClientVar       string
+	InputVar        string
+	RequestBody     DynamicType
+	ResponseBody    DynamicType
 }

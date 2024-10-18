@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
 	"io"
-	"regexp"
+	"net/http"
 	"strings"
 )
 
@@ -13,185 +13,270 @@ type JSCodeFormatter struct {
 	typeMapper codegen.ITypeMapper
 }
 
-func NewJSCodeFormatter(output io.Writer, mapper codegen.ITypeMapper) *JSCodeFormatter {
+func NewJSCodeFormatter(output io.Writer, typeMapper codegen.ITypeMapper) *JSCodeFormatter {
 	return &JSCodeFormatter{
 		output:     output,
-		typeMapper: mapper,
+		typeMapper: typeMapper,
 	}
 }
 
-type InterfaceBuilder struct {
-	parent     *JSCodeFormatter
-	name       string
-	properties map[string]string
-	functions  []FunctionBuilder
-}
-
-func NewInterfaceBuilder(parent *JSCodeFormatter, name string) *InterfaceBuilder {
-	return &InterfaceBuilder{
-		parent:     parent,
-		name:       name,
-		properties: make(map[string]string),
-		functions:  make([]FunctionBuilder, 0),
-	}
-}
-
-func (formatter *InterfaceBuilder) Property(name string, propType codegen.DynamicType) error {
-	typeStr, err := formatter.parent.typeMapper.Convert(propType)
-	if err != nil {
-		return fmt.Errorf("failed to map property type: %w", err)
-	}
-
-	formatter.properties[name] = typeStr
-	return nil
-}
-
-func (formatter *InterfaceBuilder) Function(function FunctionBuilder) error {
-	formatter.functions = append(formatter.functions, function)
-	return nil
-}
-
-func (formatter *InterfaceBuilder) Complete() error {
-
-	_, err := fmt.Fprintf(formatter.parent.output, "export interface %s {\n", formatter.name)
-	if err != nil {
-		return err
-	}
-
-	for prop, typeStr := range formatter.properties {
-		_, err = fmt.Fprintf(formatter.parent.output, "\t%s: %s;\n", prop, typeStr)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, function := range formatter.functions {
-		_, err = fmt.Fprint(formatter.parent.output, "\t")
-		if err != nil {
-			return err
-		}
-
-		err = function.Complete()
-		if err != nil {
-			return err
-		}
-
-		_, err = fmt.Fprint(formatter.parent.output, ";\n")
-		if err != nil {
-			return err
-		}
-	}
-
-	_, err = fmt.Fprintf(formatter.parent.output, "}\n")
-	if err != nil {
-		return fmt.Errorf("failed to write interface closer: %w", err)
-	}
-
-	return nil
-}
-
-func (formatter *JSCodeFormatter) StartInterface(name string) *InterfaceBuilder {
-	return NewInterfaceBuilder(formatter, name)
-}
-
-func (formatter *JSCodeFormatter) FunctionSignature(name string) *FunctionBuilder {
-	return NewFunctionBuilder(name, formatter)
-}
-
-func (formatter *JSCodeFormatter) WriteURIString(template string, inputVarName string) error {
+func (formatter *JSCodeFormatter) Format(service codegen.CompiledService) error {
+	// format this service
 	var err error
-	if _, err = fmt.Fprint(formatter.output, "`"); err != nil {
-		return err
-	}
 
-	// TODO typecheck that all variables are included
-
-	parser := regexp.MustCompile(`\{\{\s*(?P<pathVariable>[a-zA-Z_][a-zA-Z0-9_]*)\s*}}`)
-	expansionTemplate := func(pathVariable string) string {
-		return fmt.Sprintf("${%s.%s}", inputVarName, pathVariable)
-	}
-
-	pathVariableGroupIdx := parser.SubexpIndex("pathVariable")
-	if pathVariableGroupIdx == -1 {
-		panic("pathVariable group should be defined")
-	}
-
-	for {
-		matchRange := parser.FindStringSubmatch(template)
-		if matchRange == nil {
-			break
+	// first, lift all inputs
+	for _, record := range service.InputRecords {
+		err = formatter.formatRecord(record)
+		if err != nil {
+			return fmt.Errorf("failed to format record '%s': %w", record.Name, err)
 		}
 
-		whole := matchRange[0]
-		pathVariable := matchRange[pathVariableGroupIdx]
-
-		template = strings.Replace(template, whole, expansionTemplate(pathVariable), 1)
+		formatter.infallibleFprint("\n")
 	}
 
-	_, err = fmt.Fprintf(formatter.output, "%s`", template)
-	return err
-}
-
-type FunctionBuilder struct {
-	parent  *JSCodeFormatter
-	name    string
-	params  map[string]string
-	retType string
-}
-
-func NewFunctionBuilder(name string, parent *JSCodeFormatter) *FunctionBuilder {
-	return &FunctionBuilder{
-		parent:  parent,
-		name:    name,
-		params:  make(map[string]string),
-		retType: "",
-	}
-}
-
-func (builder *FunctionBuilder) Param(name string, tp codegen.DynamicType) error {
-	var err error
-	builder.params[name], err = builder.parent.typeMapper.Convert(tp)
+	// next, emit the service interface
+	err = formatter.formatInterface(service.ServiceInterface)
 	if err != nil {
-		delete(builder.params, name)
-		return fmt.Errorf("failed to map parameter type for %s: %w", name, err)
+		return fmt.Errorf("failed to format interface '%s': %w", service.ServiceInterface.Name, err)
+	}
+
+	// next, format the actual implementation
+	err = formatter.formatServiceImplementation(service.Implementation)
+	if err != nil {
+		return fmt.Errorf("failed to format service impl '%s': %w", service.Implementation.Name, err)
 	}
 
 	return nil
 }
 
-func (builder *FunctionBuilder) ReturnType(tp codegen.DynamicType) error {
-	var err error
-	builder.retType, err = builder.parent.typeMapper.Convert(tp)
-	return err
-}
-
-func (builder *FunctionBuilder) Complete() error {
-	_, err := fmt.Fprintf(builder.parent.output, "%s(", builder.name)
-	if err != nil {
-		return fmt.Errorf("failed to format function name: %w", err)
-	}
-
-	idx := 0
-	for param, typeVal := range builder.params {
-		_, err = fmt.Fprintf(builder.parent.output, "%s: %s", param, typeVal)
+func (formatter *JSCodeFormatter) formatRecord(record codegen.Record) error {
+	formatter.infallibleFprintf("export interface %s {\n", record.Name)
+	for _, property := range record.Variables {
+		typeStr, err := formatter.typeMapper.Convert(property.Type.Type)
 		if err != nil {
-			return fmt.Errorf("failed to format function param %s: %w", param, err)
+			return fmt.Errorf("failed to map property type for '%s': %w", property.Name, err)
 		}
 
-		if idx < len(builder.params)-1 {
-			_, err = fmt.Fprintf(builder.parent.output, ", ")
+		formatter.infallibleFprintf("\t%s: %s;\n", property.Name, typeStr)
+	}
+
+	formatter.infallibleFprint("}\n")
+
+	return nil
+}
+
+func (formatter *JSCodeFormatter) formatInterface(iface codegen.Interface) error {
+	formatter.infallibleFprintf("export interface %s {\n", iface.Name)
+	for _, signature := range iface.Functions {
+		formatter.infallibleFprintf("\t%s(", signature.Name)
+		var params []string
+		for _, param := range signature.Args {
+			typeStr, err := formatter.typeMapper.Convert(param.Type.Type)
 			if err != nil {
-				return fmt.Errorf("failed to format function param %s: %w", param, err)
+				return fmt.Errorf("failed to map arg type for '%s': %w", param.Name, err)
 			}
+
+			param := fmt.Sprintf("%s: %s", param.Name, typeStr)
+			params = append(params, param)
 		}
 
-		idx++
+		// write rest of arguments
+		paramsStr := strings.Join(params, ", ")
+		formatter.infallibleFprintf("%s)", paramsStr)
+
+		// if return type is non-void, then write a void
+		if signature.Ret.TypeID != codegen.TypeID_VOID {
+			retTypeStr, err := formatter.typeMapper.Convert(signature.Ret)
+			if err != nil {
+				return fmt.Errorf("failed to map return type: %w", err)
+			}
+
+			formatter.infallibleFprintf(": %s", retTypeStr)
+		}
+
+		formatter.infallibleFprintf(";\n")
 	}
 
-	_, err = fmt.Fprintf(builder.parent.output, "): %s", builder.retType)
-	if err != nil {
-		return fmt.Errorf("failed to format function return: %w", err)
+	formatter.infallibleFprint("}\n")
+
+	return nil
+}
+
+func (formatter *JSCodeFormatter) formatServiceImplementation(class codegen.Class) error {
+	// start the class
+	formatter.infallibleFprintf("export class %s ", class.Name)
+
+	// implement any interfaces
+	if len(class.Interfaces) > 0 {
+		var ifaceNames []string
+		for _, iface := range class.Interfaces {
+			ifaceName, err := formatter.typeMapper.Convert(iface)
+			if err != nil {
+				return fmt.Errorf("failed to map interface type: %w", err)
+			}
+
+			ifaceNames = append(ifaceNames, ifaceName)
+		}
+
+		interfaceList := strings.Join(ifaceNames, ", ")
+		formatter.infallibleFprintf("implements %s ", interfaceList)
+	}
+
+	formatter.infallibleFprint("{\n")
+
+	// add a constructor for injection properties
+	if len(class.InjectionProperties) > 0 {
+
+		formatter.infallibleFprint("\tconstructor(\n")
+
+		var params []string
+		for _, injectionProp := range class.InjectionProperties {
+			typeStr, err := formatter.typeMapper.Convert(injectionProp.Type.Type)
+			if err != nil {
+				return fmt.Errorf("failed to map property type for '%s': %w", injectionProp.Name, err)
+			}
+
+			param := fmt.Sprintf("\t\tprivate readonly %s: %s", injectionProp.Name, typeStr)
+			params = append(params, param)
+		}
+
+		paramsStr := strings.Join(params, ",\n")
+		formatter.infallibleFprintf("%s\n\t) {}\n", paramsStr)
+	}
+
+	// add the implementation
+	for _, method := range class.Methods {
+		// write the function signature
+		formatter.infallibleFprint("\t")
+		err := formatter.formatFunctionSignature(method.Signature)
+		if err != nil {
+			return fmt.Errorf("failed to format function signature: %w", err)
+		}
+
+		// write the body
+
+		// begin body
+		formatter.infallibleFprint(" {\n")
+
+		// write the http call
+		formatter.infallibleFprint("\t\treturn ")
+
+		err = formatter.formatHttpCall(method.HttpCall)
+		if err != nil {
+			return fmt.Errorf("failed to format http call: %w", err)
+		}
+
+		formatter.infallibleFprint(";\n")
+
+		// close body
+		formatter.infallibleFprint("\t")
+		formatter.infallibleFprint("}\n")
+	}
+
+	formatter.infallibleFprint("}\n")
+
+	return nil
+}
+
+func (formatter *JSCodeFormatter) formatFunctionSignature(signature codegen.FunctionSignature) error {
+
+	var args []string
+	for _, arg := range signature.Args {
+		typeStr, err := formatter.typeMapper.Convert(arg.Type.Type)
+		if err != nil {
+			return fmt.Errorf("failed to map arg type for '%s': %w", arg.Name, err)
+		}
+
+		argStr := fmt.Sprintf("%s: %s", arg.Name, typeStr)
+		args = append(args, argStr)
+	}
+
+	formatter.infallibleFprintf("%s(%s)", signature.Name, strings.Join(args, ", "))
+
+	if signature.Ret.TypeID != codegen.TypeID_VOID {
+		retTypeStr, err := formatter.typeMapper.Convert(signature.Ret)
+		if err != nil {
+			return fmt.Errorf("failed to map return type: %w", err)
+		}
+
+		formatter.infallibleFprintf(": %s", retTypeStr)
 	}
 
 	return nil
+}
+
+func (formatter *JSCodeFormatter) formatHttpCall(call codegen.HttpRequest) error {
+	formatter.infallibleFprintf("this.%s.", call.ClientVar)
+	// figure out which method and type variable we might need
+	var requestMethod string
+
+	switch call.Method {
+	case http.MethodGet:
+		requestMethod = "get"
+	case http.MethodPost:
+		requestMethod = "post"
+	case http.MethodPut:
+		requestMethod = "put"
+	default:
+		return fmt.Errorf("invalid method '%s'", call.Method)
+	}
+
+	formatter.infallibleFprint(requestMethod)
+
+	// optionally provide a generic string if a response body is specified
+	if call.ResponseBody.TypeID != codegen.TypeID_VOID {
+		typeStr, err := formatter.typeMapper.Convert(call.ResponseBody)
+		if err != nil {
+			return fmt.Errorf("failed to map response body type: %w", err)
+		}
+		formatter.infallibleFprintf("<%s>", typeStr)
+	}
+
+	// first, make the endpoint template
+	templateFormatter := func(pathVariable string) (string, error) {
+		return fmt.Sprintf("${%s.%s}", call.InputVar, pathVariable), nil
+	}
+
+	expandedTemplateString, err := FormatTemplate(call.UrlTemplate, templateFormatter)
+	if err != nil {
+		return fmt.Errorf("failed to format template: %w", err)
+	}
+
+	formatter.infallibleFprintf("(`%s`", expandedTemplateString)
+
+	// if there are options or further arguments, do that here
+	if call.RequestBody.TypeID != codegen.TypeID_VOID {
+		// TODO body is hardcoded -- BAD!!
+		formatter.infallibleFprintf(", %s.body", call.InputVar)
+	}
+
+	// close the function
+	formatter.infallibleFprintf(")")
+
+	return nil
+}
+
+func (formatter *JSCodeFormatter) formatVariableDecl(decl codegen.VariableDecl) error {
+	typeStr, err := formatter.typeMapper.Convert(decl.Type.Type)
+	if err != nil {
+		return fmt.Errorf("failed to map decl type for '%s': %w", decl.Name, err)
+	}
+
+	formatter.infallibleFprintf("%s: %s", decl.Name, typeStr)
+
+	return nil
+}
+
+func (formatter *JSCodeFormatter) infallibleFprintf(format string, a ...interface{}) {
+	_, err := fmt.Fprintf(formatter.output, format, a...)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (formatter *JSCodeFormatter) infallibleFprint(input string) {
+	_, err := fmt.Fprint(formatter.output, input)
+	if err != nil {
+		panic(err)
+	}
 }

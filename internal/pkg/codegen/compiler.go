@@ -2,14 +2,15 @@ package codegen
 
 import (
 	"fmt"
+	"github.com/iancoleman/strcase"
 )
 
 /// Convert a service definition into a concrete syntax tree of fragments
 
 type CompiledService struct {
-	inputRecords     []Record
-	serviceInterface Interface
-	implementation   Class
+	InputRecords     []Record
+	ServiceInterface Interface
+	Implementation   Class
 }
 
 type ServiceCompiler struct {
@@ -19,8 +20,10 @@ func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) Co
 
 	// start an interface
 	var inputTypeDefs []Record
-	serviceInterface, _ := compiler.createServiceInterface(serviceDef)
-	serviceClass, _ := compiler.createServiceClass(serviceDef)
+	serviceInterface, serviceInterfaceType := compiler.createServiceInterface(serviceDef)
+
+	// make a service class
+	serviceClass, _ := compiler.createServiceClass(serviceDef, serviceInterfaceType)
 
 	// create a number of record types
 	for _, endpoint := range serviceDef.Endpoints {
@@ -35,11 +38,20 @@ func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) Co
 		serviceInterface.Functions = append(serviceInterface.Functions, endpointSignature)
 
 		// create an implementation for this endpoint
-		// TODO
+		request := HttpRequest{
+			Method:          endpoint.Method,
+			UrlTemplate:     endpoint.Endpoint,
+			BaseEndpointVar: "",
+			ClientVar:       "http",
+			InputVar:        "input",
+			RequestBody:     endpoint.RequestBody.Type,
+			ResponseBody:    endpoint.ResponseBody.Type,
+		}
 
 		// add the implementation to the class
 		methodImpl := FunctionImpl{
 			Signature: endpointSignature,
+			HttpCall:  request,
 		}
 
 		// add implementation
@@ -48,14 +60,14 @@ func (compiler *ServiceCompiler) CompileService(serviceDef ServiceDefinition) Co
 
 	// create endpoint function signatures for all endpoints
 	return CompiledService{
-		implementation:   serviceClass,
-		serviceInterface: serviceInterface,
-		inputRecords:     inputTypeDefs,
+		Implementation:   serviceClass,
+		ServiceInterface: serviceInterface,
+		InputRecords:     inputTypeDefs,
 	}
 }
 
 func (compiler *ServiceCompiler) createServiceInterface(definition ServiceDefinition) (Interface, DynamicType) {
-	typeName := fmt.Sprintf("I%s", definition.Name)
+	typeName := fmt.Sprintf("I%s", strcase.ToCamel(definition.Name))
 
 	// create an empty interface
 	iface := Interface{
@@ -71,17 +83,32 @@ func (compiler *ServiceCompiler) createServiceInterface(definition ServiceDefini
 	return iface, dtype
 }
 
-func (compiler *ServiceCompiler) createServiceClass(definition ServiceDefinition) (Class, DynamicType) {
+func (compiler *ServiceCompiler) createServiceClass(definition ServiceDefinition, serviceIFace DynamicType) (Class, DynamicType) {
+
+	typeName := strcase.ToCamel(definition.Name)
+
 	class := Class{
-		Name:                definition.Name,
-		Properties:          make([]VariableDecl, 0),
-		InjectionProperties: make([]VariableDecl, 0),
-		Methods:             make([]FunctionImpl, 0),
+		Name:       typeName,
+		Interfaces: []DynamicType{serviceIFace},
+		Properties: make([]VariableDecl, 0),
+		InjectionProperties: []VariableDecl{
+			{
+				Name: "http",
+				Type: TypeDecl{
+					Type: DynamicType{
+						TypeID:    TypeID_USER,
+						Reference: "HttpClient",
+					},
+					Required: true,
+				},
+			},
+		},
+		Methods: make([]FunctionImpl, 0),
 	}
 
 	dtype := DynamicType{
 		TypeID:    TypeID_USER,
-		Reference: definition.Name,
+		Reference: typeName,
 	}
 
 	return class, dtype
@@ -89,7 +116,7 @@ func (compiler *ServiceCompiler) createServiceClass(definition ServiceDefinition
 
 func (compiler *ServiceCompiler) createEndpointInputPayload(endpoint APIEndpoint) (Record, DynamicType) {
 	// TODO ensure proper casing endpoint
-	typeName := fmt.Sprintf("%sInput", endpoint.Name)
+	typeName := fmt.Sprintf("%sInput", strcase.ToCamel(endpoint.Name))
 
 	record := Record{
 		Name:      typeName,
