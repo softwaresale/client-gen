@@ -20,7 +20,7 @@ func main() {
 						Type: codegen2.DynamicType{
 							TypeID: codegen2.TypeID_STRING,
 						},
-						Required: true,
+						Required: false,
 					},
 					"name": {
 						Type: codegen2.DynamicType{
@@ -97,12 +97,7 @@ func main() {
 	}
 
 	ngServiceGen := templates.NewNGServiceGenerator()
-	def, err := templates.Translate(service)
-	if err != nil {
-		panic(err)
-	}
-
-	err = ngServiceGen.Generate(os.Stdout, def)
+	err := ngServiceGen.Generate(os.Stdout, service)
 	if err != nil {
 		panic(err)
 	}

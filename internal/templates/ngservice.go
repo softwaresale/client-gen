@@ -14,6 +14,9 @@ import (
 //go:embed ng-service.tmpl
 var templateText string
 
+//go:embed ng-entity.tmpl
+var entityTemplateText string
+
 type HttpRequestDef struct {
 	HttpClientVar    string      // the name of the variable that defines the HTTP client in use
 	HttpMethod       string      // The HTTP method used by this request
@@ -38,19 +41,10 @@ func (def RequestMethodDef) HasInput() bool {
 	return len(def.RequestInputType) > 0
 }
 
-type RequestInputDef struct {
-	Name       string
-	Properties map[string]string
-}
-
-func (def RequestInputDef) IsValid() bool {
-	return len(def.Properties) > 0
-}
-
 type ServiceDef struct {
 	ServiceName   string
 	HttpClientVar string
-	InputTypes    []RequestInputDef
+	InputTypes    []codegen.EntitySpec
 	Methods       []RequestMethodDef
 }
 
@@ -58,45 +52,27 @@ func mapHttpEndpoint(method string) string {
 	return strings.ToLower(method)
 }
 
-func Translate(service codegen.ServiceDefinition) (ServiceDef, error) {
+func translate(service codegen.ServiceDefinition) (ServiceDef, error) {
 
 	typeMapper := jscodegen.JSTypeMapper{}
 	httpClientVar := "http"
 
 	var methods []RequestMethodDef
-	var inputs []RequestInputDef
+	var inputs []codegen.EntitySpec
 	for _, endpoint := range service.Endpoints {
 
 		inputVarName := "input"
 		bodyPropertyName := "body"
 
-		// create the input type
-		inputTypeName := strcase.ToCamel(fmt.Sprintf("%sInput", endpoint.Name))
-		properties := make(map[string]string)
-		for prop, tp := range endpoint.PathVariables {
-			tpStr, err := typeMapper.Convert(tp.Type)
-			if err != nil {
-				return ServiceDef{}, err
-			}
-
-			properties[prop] = tpStr
+		requestInputDef, err := createInputType(endpoint, bodyPropertyName)
+		if err != nil {
+			return ServiceDef{}, err
 		}
 
-		if !endpoint.RequestBody.Type.IsVoid() {
-			tpStr, err := typeMapper.Convert(endpoint.RequestBody.Type)
-			if err != nil {
-				return ServiceDef{}, err
-			}
-			properties[bodyPropertyName] = tpStr
-		}
-
-		requestInputDef := RequestInputDef{
-			Name:       inputTypeName,
-			Properties: properties,
-		}
-
-		if !requestInputDef.IsValid() {
-			inputTypeName = ""
+		inputTypeName := ""
+		if requestInputDef.IsValid() {
+			inputTypeName = requestInputDef.Name
+			inputs = append(inputs, *requestInputDef)
 		}
 
 		requestBodyValue := ""
@@ -129,9 +105,6 @@ func Translate(service codegen.ServiceDefinition) (ServiceDef, error) {
 		}
 
 		methods = append(methods, methodDef)
-		if requestInputDef.IsValid() {
-			inputs = append(inputs, requestInputDef)
-		}
 	}
 
 	return ServiceDef{
@@ -142,22 +115,57 @@ func Translate(service codegen.ServiceDefinition) (ServiceDef, error) {
 	}, nil
 }
 
+func createInputType(endpoint codegen.APIEndpoint, bodyPropertyName string) (*codegen.EntitySpec, error) {
+	inputTypeName := strcase.ToCamel(fmt.Sprintf("%sInput", endpoint.Name))
+	properties := make(map[string]codegen.PropertySpec)
+	for prop, tp := range endpoint.PathVariables {
+		properties[prop] = codegen.PropertySpec{
+			Type:     tp.Type,
+			Required: tp.Required,
+		}
+	}
+
+	if !endpoint.RequestBody.Type.IsVoid() {
+		properties[bodyPropertyName] = codegen.PropertySpec{
+			Type:     endpoint.RequestBody.Type,
+			Required: endpoint.RequestBody.Required,
+		}
+	}
+
+	return &codegen.EntitySpec{
+		Name:       inputTypeName,
+		Properties: properties,
+	}, nil
+}
+
 type NGServiceGenerator struct {
 	ngServiceTemplate *template.Template
 }
 
 // NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
 func NewNGServiceGenerator() *NGServiceGenerator {
+
+	mapper := jscodegen.JSTypeMapper{}
+
 	tmpl := template.Must(template.New("NGService").Funcs(template.FuncMap{
 		"HasRequestBody": hasRequestBody,
 		"ParseTemplate":  FormatTemplate,
+		"ConvertType":    mapper.Convert,
 	}).Parse(templateText))
+
+	tmpl = template.Must(tmpl.Parse(entityTemplateText))
 
 	return &NGServiceGenerator{
 		ngServiceTemplate: tmpl,
 	}
 }
 
-func (generator *NGServiceGenerator) Generate(writer io.Writer, def ServiceDef) error {
-	return generator.ngServiceTemplate.Execute(writer, def)
+func (generator *NGServiceGenerator) Generate(writer io.Writer, def codegen.ServiceDefinition) error {
+
+	translatedDef, err := translate(def)
+	if err != nil {
+		return fmt.Errorf("failed to translate service definition: %w", err)
+	}
+
+	return generator.ngServiceTemplate.Execute(writer, translatedDef)
 }

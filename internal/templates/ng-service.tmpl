@@ -26,7 +26,7 @@ import { Observable } from "rxjs";
 
 {{ range $inputDef := .InputTypes }}
     {{- if $inputDef.IsValid }}
-        {{- template "RequestInput" $inputDef -}}
+        {{- template "Entity" $inputDef -}}
     {{end -}}
 {{end}}
 
