@@ -148,18 +148,20 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 
 	mapper := jscodegen.JSTypeMapper{}
 
-	tmpl := template.Must(template.New("NGService").Funcs(template.FuncMap{
+	funcMap := template.FuncMap{
 		"HasRequestBody": hasRequestBody,
 		"ParseTemplate":  FormatTemplate,
 		"ConvertType":    mapper.Convert,
-	}).Parse(templateText))
+	}
 
-	tmpl = template.Must(tmpl.Parse(entityTemplateText))
+	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
 
-	entityTmpl := template.Must(tmpl.Parse(entityTemplateText))
+	standaloneEntityTemplate := `{{ template "Entity" . }}`
+	entityTmpl := template.Must(template.New("NGEntity").Funcs(funcMap).Parse(entityTemplateText))
+	entityTmpl = template.Must(entityTmpl.Parse(standaloneEntityTemplate))
 
 	return &NGServiceGenerator{
-		ngServiceTemplate: tmpl,
+		ngServiceTemplate: serviceTmpl,
 		ngEntityTemplate:  entityTmpl,
 	}
 }

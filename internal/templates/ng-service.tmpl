@@ -8,14 +8,6 @@
         {{- template "HttpRequest" .HttpRequest }}
     }
 {{- end}}
-
-{{- define "RequestInput" }}
-export interface {{ .Name }} {
-    {{ range $name, $tp := .Properties }}
-        {{- $name -}}: {{ $tp -}};
-    {{end}}
-}
-{{end -}}
 /*
     This file is auto generated. DO NOT MODIFY IT BY HAND.
 */
