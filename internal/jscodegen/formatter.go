@@ -2,7 +2,7 @@ package jscodegen
 
 import (
 	"fmt"
-	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
+	codegen2 "github.com/softwaresale/client-gen/v2/internal/codegen"
 	"io"
 	"net/http"
 	"strings"
@@ -10,17 +10,17 @@ import (
 
 type JSCodeFormatter struct {
 	output     io.Writer
-	typeMapper codegen.ITypeMapper
+	typeMapper codegen2.ITypeMapper
 }
 
-func NewJSCodeFormatter(output io.Writer, typeMapper codegen.ITypeMapper) *JSCodeFormatter {
+func NewJSCodeFormatter(output io.Writer, typeMapper codegen2.ITypeMapper) *JSCodeFormatter {
 	return &JSCodeFormatter{
 		output:     output,
 		typeMapper: typeMapper,
 	}
 }
 
-func (formatter *JSCodeFormatter) Format(service codegen.CompiledService) error {
+func (formatter *JSCodeFormatter) Format(service codegen2.CompiledService) error {
 	// format this service
 	var err error
 
@@ -56,7 +56,7 @@ func (formatter *JSCodeFormatter) Format(service codegen.CompiledService) error 
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatImports(imports codegen.ImportBlock) error {
+func (formatter *JSCodeFormatter) formatImports(imports codegen2.ImportBlock) error {
 	for pkg, types := range imports.Packages {
 		typesStr := strings.Join(types, ", ")
 		formatter.infallibleFprintf("import { %s } from '%s';\n", typesStr, pkg)
@@ -65,7 +65,7 @@ func (formatter *JSCodeFormatter) formatImports(imports codegen.ImportBlock) err
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatRecord(record codegen.Record) error {
+func (formatter *JSCodeFormatter) formatRecord(record codegen2.Record) error {
 	formatter.infallibleFprintf("export interface %s {\n", record.Name)
 	for _, property := range record.Variables {
 		typeStr, err := formatter.typeMapper.Convert(property.Type.Type)
@@ -81,7 +81,7 @@ func (formatter *JSCodeFormatter) formatRecord(record codegen.Record) error {
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatInterface(iface codegen.Interface) error {
+func (formatter *JSCodeFormatter) formatInterface(iface codegen2.Interface) error {
 	formatter.infallibleFprintf("export interface %s {\n", iface.Name)
 	for _, signature := range iface.Functions {
 		formatter.infallibleFprintf("\t%s(", signature.Name)
@@ -101,7 +101,7 @@ func (formatter *JSCodeFormatter) formatInterface(iface codegen.Interface) error
 		formatter.infallibleFprintf("%s)", paramsStr)
 
 		// if return type is non-void, then write a void
-		if signature.Ret.TypeID != codegen.TypeID_VOID {
+		if signature.Ret.TypeID != codegen2.TypeID_VOID {
 			retTypeStr, err := formatter.typeMapper.Convert(signature.Ret)
 			if err != nil {
 				return fmt.Errorf("failed to map return type: %w", err)
@@ -118,7 +118,7 @@ func (formatter *JSCodeFormatter) formatInterface(iface codegen.Interface) error
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatServiceImplementation(class codegen.Class) error {
+func (formatter *JSCodeFormatter) formatServiceImplementation(class codegen2.Class) error {
 	// start the class
 	formatter.infallibleFprintf("export class %s ", class.Name)
 
@@ -194,7 +194,7 @@ func (formatter *JSCodeFormatter) formatServiceImplementation(class codegen.Clas
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatFunctionSignature(signature codegen.FunctionSignature) error {
+func (formatter *JSCodeFormatter) formatFunctionSignature(signature codegen2.FunctionSignature) error {
 
 	var args []string
 	for _, arg := range signature.Args {
@@ -209,7 +209,7 @@ func (formatter *JSCodeFormatter) formatFunctionSignature(signature codegen.Func
 
 	formatter.infallibleFprintf("%s(%s)", signature.Name, strings.Join(args, ", "))
 
-	if signature.Ret.TypeID != codegen.TypeID_VOID {
+	if signature.Ret.TypeID != codegen2.TypeID_VOID {
 		retTypeStr, err := formatter.typeMapper.Convert(signature.Ret)
 		if err != nil {
 			return fmt.Errorf("failed to map return type: %w", err)
@@ -221,7 +221,7 @@ func (formatter *JSCodeFormatter) formatFunctionSignature(signature codegen.Func
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatHttpCall(call codegen.HttpRequest) error {
+func (formatter *JSCodeFormatter) formatHttpCall(call codegen2.HttpRequest) error {
 	formatter.infallibleFprintf("this.%s.", call.ClientVar)
 	// figure out which method and type variable we might need
 	var requestMethod string
@@ -240,7 +240,7 @@ func (formatter *JSCodeFormatter) formatHttpCall(call codegen.HttpRequest) error
 	formatter.infallibleFprint(requestMethod)
 
 	// optionally provide a generic string if a response body is specified
-	if call.ResponseBody.TypeID != codegen.TypeID_VOID {
+	if call.ResponseBody.TypeID != codegen2.TypeID_VOID {
 		typeStr, err := formatter.typeMapper.Convert(call.ResponseBody)
 		if err != nil {
 			return fmt.Errorf("failed to map response body type: %w", err)
@@ -261,7 +261,7 @@ func (formatter *JSCodeFormatter) formatHttpCall(call codegen.HttpRequest) error
 	formatter.infallibleFprintf("(`%s`", expandedTemplateString)
 
 	// if there are options or further arguments, do that here
-	if call.RequestBody.TypeID != codegen.TypeID_VOID {
+	if call.RequestBody.TypeID != codegen2.TypeID_VOID {
 		// TODO body is hardcoded -- BAD!!
 		formatter.infallibleFprintf(", %s.body", call.InputVar)
 	}
@@ -272,7 +272,7 @@ func (formatter *JSCodeFormatter) formatHttpCall(call codegen.HttpRequest) error
 	return nil
 }
 
-func (formatter *JSCodeFormatter) formatVariableDecl(decl codegen.VariableDecl) error {
+func (formatter *JSCodeFormatter) formatVariableDecl(decl codegen2.VariableDecl) error {
 	typeStr, err := formatter.typeMapper.Convert(decl.Type.Type)
 	if err != nil {
 		return fmt.Errorf("failed to map decl type for '%s': %w", decl.Name, err)

@@ -2,43 +2,43 @@ package main
 
 import (
 	"fmt"
-	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
-	"github.com/softwaresale/client-gen/v2/internal/pkg/jscodegen"
+	codegen2 "github.com/softwaresale/client-gen/v2/internal/codegen"
+	jscodegen2 "github.com/softwaresale/client-gen/v2/internal/jscodegen"
 	"net/http"
 	"os"
 )
 
 func main() {
-	service := codegen.ServiceDefinition{
+	service := codegen2.ServiceDefinition{
 		Name: "ModelsService",
-		Endpoints: []codegen.APIEndpoint{
+		Endpoints: []codegen2.APIEndpoint{
 			{
 				Name:     "getModels",
 				Endpoint: "/api/v1/person/{{age}}/name/{{name}}/somethingelse",
 				Method:   http.MethodGet,
-				PathVariables: map[string]codegen.RequestValue{
+				PathVariables: map[string]codegen2.RequestValue{
 					"age": {
-						Type: codegen.DynamicType{
-							TypeID: codegen.TypeID_STRING,
+						Type: codegen2.DynamicType{
+							TypeID: codegen2.TypeID_STRING,
 						},
 						Required: true,
 					},
 					"name": {
-						Type: codegen.DynamicType{
-							TypeID: codegen.TypeID_STRING,
+						Type: codegen2.DynamicType{
+							TypeID: codegen2.TypeID_STRING,
 						},
 						Required: true,
 					},
 				},
-				RequestBody: codegen.RequestValue{
-					Type: codegen.DynamicType{
-						TypeID: codegen.TypeID_VOID,
+				RequestBody: codegen2.RequestValue{
+					Type: codegen2.DynamicType{
+						TypeID: codegen2.TypeID_VOID,
 					},
 					Required: false,
 				},
-				ResponseBody: codegen.RequestValue{
-					Type: codegen.DynamicType{
-						TypeID:    codegen.TypeID_STRING,
+				ResponseBody: codegen2.RequestValue{
+					Type: codegen2.DynamicType{
+						TypeID:    codegen2.TypeID_STRING,
 						Reference: "",
 					},
 				},
@@ -47,16 +47,16 @@ func main() {
 				Name:     "createModel",
 				Endpoint: "/api/v1/person",
 				Method:   http.MethodPost,
-				RequestBody: codegen.RequestValue{
-					Type: codegen.DynamicType{
-						TypeID:    codegen.TypeID_USER,
+				RequestBody: codegen2.RequestValue{
+					Type: codegen2.DynamicType{
+						TypeID:    codegen2.TypeID_USER,
 						Reference: "PersonModel",
 					},
 					Required: true,
 				},
-				ResponseBody: codegen.RequestValue{
-					Type: codegen.DynamicType{
-						TypeID:    codegen.TypeID_USER,
+				ResponseBody: codegen2.RequestValue{
+					Type: codegen2.DynamicType{
+						TypeID:    codegen2.TypeID_USER,
 						Reference: "PersonModel",
 					},
 				},
@@ -65,24 +65,24 @@ func main() {
 				Name:     "updateModel",
 				Endpoint: "/api/v1/person/{{id}}",
 				Method:   http.MethodPut,
-				PathVariables: map[string]codegen.RequestValue{
+				PathVariables: map[string]codegen2.RequestValue{
 					"id": {
-						Type: codegen.DynamicType{
-							TypeID: codegen.TypeID_STRING,
+						Type: codegen2.DynamicType{
+							TypeID: codegen2.TypeID_STRING,
 						},
 						Required: true,
 					},
 				},
-				RequestBody: codegen.RequestValue{
-					Type: codegen.DynamicType{
-						TypeID:    codegen.TypeID_USER,
+				RequestBody: codegen2.RequestValue{
+					Type: codegen2.DynamicType{
+						TypeID:    codegen2.TypeID_USER,
 						Reference: "PersonModel",
 					},
 					Required: true,
 				},
-				ResponseBody: codegen.RequestValue{
-					Type: codegen.DynamicType{
-						TypeID:    codegen.TypeID_USER,
+				ResponseBody: codegen2.RequestValue{
+					Type: codegen2.DynamicType{
+						TypeID:    codegen2.TypeID_USER,
 						Reference: "PersonModel",
 					},
 					Required: true,
@@ -95,8 +95,8 @@ func main() {
 		"PersonModel": "lib/common",
 	}
 
-	resolver := codegen.ComposePackageResolver(
-		jscodegen.WellKnownTypeResolver,
+	resolver := codegen2.ComposePackageResolver(
+		jscodegen2.WellKnownTypeResolver,
 		func(typeRef string) (string, error) {
 			pkg, exists := definedTypes[typeRef]
 			if !exists {
@@ -107,7 +107,7 @@ func main() {
 		},
 	)
 
-	typeManager := codegen.TypeManager{
+	typeManager := codegen2.TypeManager{
 		Filter: func(typeRef string) bool {
 			if len(typeRef) == 0 {
 				return false
@@ -119,7 +119,7 @@ func main() {
 		PkgResolver: resolver,
 	}
 
-	serviceCompiler := codegen.ServiceCompiler{
+	serviceCompiler := codegen2.ServiceCompiler{
 		TypeManager: typeManager,
 	}
 
@@ -128,7 +128,7 @@ func main() {
 		panic(err)
 	}
 
-	formatter := jscodegen.NewJSCodeFormatter(os.Stdout, jscodegen.JSTypeMapper{})
+	formatter := jscodegen2.NewJSCodeFormatter(os.Stdout, jscodegen2.JSTypeMapper{})
 
 	err = formatter.Format(*compiledService)
 	if err != nil {

@@ -2,7 +2,7 @@ package jscodegen
 
 import (
 	"fmt"
-	"github.com/softwaresale/client-gen/v2/internal/pkg/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/codegen"
 	"strings"
 )
 
