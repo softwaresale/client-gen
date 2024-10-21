@@ -1,9 +1,8 @@
 package main
 
 import (
-	"fmt"
 	codegen2 "github.com/softwaresale/client-gen/v2/internal/codegen"
-	jscodegen2 "github.com/softwaresale/client-gen/v2/internal/jscodegen"
+	"github.com/softwaresale/client-gen/v2/internal/templates"
 	"net/http"
 	"os"
 )
@@ -38,8 +37,14 @@ func main() {
 				},
 				ResponseBody: codegen2.RequestValue{
 					Type: codegen2.DynamicType{
-						TypeID:    codegen2.TypeID_STRING,
+						TypeID:    codegen2.TypeID_ARRAY,
 						Reference: "",
+						Inner: []codegen2.DynamicType{
+							{
+								TypeID:    codegen2.TypeID_USER,
+								Reference: "PersonModel",
+							},
+						},
 					},
 				},
 			},
@@ -91,46 +96,13 @@ func main() {
 		},
 	}
 
-	definedTypes := map[string]string{
-		"PersonModel": "lib/common",
-	}
-
-	resolver := codegen2.ComposePackageResolver(
-		jscodegen2.WellKnownTypeResolver,
-		func(typeRef string) (string, error) {
-			pkg, exists := definedTypes[typeRef]
-			if !exists {
-				return "", fmt.Errorf("failed to resolve type '%s'", typeRef)
-			}
-
-			return pkg, nil
-		},
-	)
-
-	typeManager := codegen2.TypeManager{
-		Filter: func(typeRef string) bool {
-			if len(typeRef) == 0 {
-				return false
-			}
-
-			_, err := resolver(typeRef)
-			return err == nil
-		},
-		PkgResolver: resolver,
-	}
-
-	serviceCompiler := codegen2.ServiceCompiler{
-		TypeManager: typeManager,
-	}
-
-	compiledService, err := serviceCompiler.CompileService(service)
+	ngServiceGen := templates.NewNGServiceGenerator()
+	def, err := templates.Translate(service)
 	if err != nil {
 		panic(err)
 	}
 
-	formatter := jscodegen2.NewJSCodeFormatter(os.Stdout, jscodegen2.JSTypeMapper{})
-
-	err = formatter.Format(*compiledService)
+	err = ngServiceGen.Generate(os.Stdout, def)
 	if err != nil {
 		panic(err)
 	}
