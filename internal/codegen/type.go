@@ -13,9 +13,9 @@ const (
 
 // DynamicType specifies a dynamic type that is specified by the user
 type DynamicType struct {
-	TypeID    string        `json:"typeID"`
-	Reference string        `json:"reference"`
-	Inner     []DynamicType `json:"inner"`
+	TypeID    string        `json:"typeID"`    // An identifier for this type. Comes from predefined enum
+	Reference string        `json:"reference"` // Used by different types, references to this entity
+	Inner     []DynamicType `json:"inner"`     // Related types, used by generics
 }
 
 func (tp DynamicType) IsVoid() bool {

@@ -15,11 +15,11 @@ import (
 var templateText string
 
 type HttpRequestDef struct {
-	HttpClientVar    string
-	HttpMethod       string
-	ResponseType     string
-	URITemplate      URITemplate
-	RequestBodyValue string
+	HttpClientVar    string      // the name of the variable that defines the HTTP client in use
+	HttpMethod       string      // The HTTP method used by this request
+	ResponseType     string      // the type string of our response
+	URITemplate      URITemplate // our URI template. This gets mapped into a uri string
+	RequestBodyValue string      // The value to read the body type
 }
 
 func hasRequestBody(def string) bool {
@@ -27,11 +27,11 @@ func hasRequestBody(def string) bool {
 }
 
 type RequestMethodDef struct {
-	RequestName      string
-	InputVarName     string
-	RequestInputType string
-	ResponseType     string
-	HttpRequest      HttpRequestDef
+	RequestName      string         // The name of this request
+	InputVarName     string         // The variable name of the input payload type
+	RequestInputType string         // the type string of the input payload
+	ResponseType     string         // The type string of the response
+	HttpRequest      HttpRequestDef // The http request that should be called in this endpoint
 }
 
 func (def RequestMethodDef) HasInput() bool {
