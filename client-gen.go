@@ -4,7 +4,6 @@ import (
 	codegen2 "github.com/softwaresale/client-gen/v2/internal/codegen"
 	"github.com/softwaresale/client-gen/v2/internal/templates"
 	"net/http"
-	"os"
 )
 
 func main() {
@@ -97,7 +96,13 @@ func main() {
 	}
 
 	ngServiceGen := templates.NewNGServiceGenerator()
-	err := ngServiceGen.Generate(os.Stdout, service)
+
+	compiler := codegen2.ServiceCompiler{
+		Generator:  ngServiceGen,
+		OutputPath: "./output/",
+	}
+
+	err := compiler.Compile(service)
 	if err != nil {
 		panic(err)
 	}

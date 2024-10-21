@@ -140,6 +140,7 @@ func createInputType(endpoint codegen.APIEndpoint, bodyPropertyName string) (*co
 
 type NGServiceGenerator struct {
 	ngServiceTemplate *template.Template
+	ngEntityTemplate  *template.Template
 }
 
 // NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
@@ -155,17 +156,23 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 
 	tmpl = template.Must(tmpl.Parse(entityTemplateText))
 
+	entityTmpl := template.Must(tmpl.Parse(entityTemplateText))
+
 	return &NGServiceGenerator{
 		ngServiceTemplate: tmpl,
+		ngEntityTemplate:  entityTmpl,
 	}
 }
 
-func (generator *NGServiceGenerator) Generate(writer io.Writer, def codegen.ServiceDefinition) error {
-
+func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codegen.ServiceDefinition) error {
 	translatedDef, err := translate(def)
 	if err != nil {
 		return fmt.Errorf("failed to translate service definition: %w", err)
 	}
 
 	return generator.ngServiceTemplate.Execute(writer, translatedDef)
+}
+
+func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def codegen.EntitySpec) error {
+	return generator.ngEntityTemplate.Execute(writer, def)
 }
