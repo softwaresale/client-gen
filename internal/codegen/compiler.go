@@ -11,8 +11,8 @@ import (
 
 // IServiceGenerator specifies a type that formats a service to an output
 type IServiceGenerator interface {
-	GenerateService(writer io.Writer, service ServiceDefinition) error
-	GenerateEntity(writer io.Writer, entity EntitySpec) error
+	GenerateService(writer io.Writer, service ServiceDefinition, outputPath string, resolver UserTypeResolver) error
+	GenerateEntity(writer io.Writer, entity EntitySpec, outputPath string, resolver UserTypeResolver) error
 }
 
 // ServiceCompiler compiles a service into a set of target files
@@ -27,32 +27,35 @@ func (compiler *ServiceCompiler) Compile(service ServiceDefinition) error {
 		return fmt.Errorf("failed to setup output directory: %w", err)
 	}
 
+	// maps user types to paths that they can be imported from
+	typeResolver := NewUserTypeResolver()
+
 	// create all dependent entities
 	for _, entitySpec := range service.Entities {
 		// create an output file
-		entityFileName := fmt.Sprintf("%s.model.gen.ts", strcase.ToKebab(entitySpec.Name))
-		entityPath := filepath.Join(compiler.OutputPath, entityFileName)
-		entityFile, err := os.Create(entityPath)
+		entityFile, entityFileName, _, err := createOutputFile(compiler.OutputPath, entitySpec.Name, "model")
 		if err != nil {
 			return fmt.Errorf("failed to create entity file: %w", err)
 		}
 
-		err = compiler.writeEntityToFile(entityFile, entitySpec)
+		err = compiler.writeEntityToFile(entityFile, entitySpec, entityFileName, typeResolver)
 		if err != nil {
 			return fmt.Errorf("failed to write entity: %w", err)
 		}
+
+		// stash the filename so that we can write the import
+		// TODO optionally check if it was actually registered
+		typeResolver.RegisterType(entitySpec, entityFileName)
 	}
 
 	// create the service implementation
-	implFileName := fmt.Sprintf("%s.service.gen.ts", strcase.ToKebab(service.Name))
-	implPath := filepath.Join(compiler.OutputPath, implFileName)
-	implFile, err := os.Create(implPath)
+	implFile, _, servicePath, err := createOutputFile(compiler.OutputPath, service.Name, "service")
 	if err != nil {
-		return fmt.Errorf("failed to create impl file: %w", err)
+		return fmt.Errorf("failed to create service: %w", err)
 	}
 	defer utils.SafeClose(implFile)
 
-	err = compiler.Generator.GenerateService(implFile, service)
+	err = compiler.Generator.GenerateService(implFile, service, servicePath, typeResolver)
 	if err != nil {
 		return fmt.Errorf("failed to generate service: %w", err)
 	}
@@ -60,15 +63,26 @@ func (compiler *ServiceCompiler) Compile(service ServiceDefinition) error {
 	return nil
 }
 
-func (compiler *ServiceCompiler) writeEntityToFile(file *os.File, spec EntitySpec) error {
+func (compiler *ServiceCompiler) writeEntityToFile(file *os.File, spec EntitySpec, specPath string, resolver UserTypeResolver) error {
 	defer utils.SafeClose(file)
 
-	err := compiler.Generator.GenerateEntity(file, spec)
+	err := compiler.Generator.GenerateEntity(file, spec, specPath, resolver)
 	if err != nil {
 		return fmt.Errorf("failed to generate entity: %w", err)
 	}
 
 	return nil
+}
+
+func createOutputFile(basePath, objectName, objectType string) (*os.File, string, string, error) {
+	fileName := fmt.Sprintf("%s.%s.gen.ts", strcase.ToKebab(objectName), objectType)
+	filePath := filepath.Join(basePath, fileName)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to create impl file: %w", err)
+	}
+
+	return file, fileName, filePath, nil
 }
 
 func setupOutputDirectory(path string) error {

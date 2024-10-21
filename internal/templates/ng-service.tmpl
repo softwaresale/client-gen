@@ -16,6 +16,8 @@ import { HttpClient } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 
+{{ template "Imports" .Imports }}
+
 {{ range $inputDef := .InputTypes }}
     {{- if $inputDef.IsValid }}
         {{- template "Entity" $inputDef -}}
