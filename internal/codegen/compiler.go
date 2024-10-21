@@ -72,9 +72,17 @@ func (compiler *ServiceCompiler) writeEntityToFile(file *os.File, spec EntitySpe
 }
 
 func setupOutputDirectory(path string) error {
+	var err error
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(path)
+		if err != nil {
+			return fmt.Errorf("failed to make absolute path: %w", err)
+		}
+	}
+
 	stat, err := os.Stat(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if !os.IsNotExist(err) {
 			return fmt.Errorf("failed to stat output path: %w", err)
 		}
 
@@ -83,6 +91,9 @@ func setupOutputDirectory(path string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
+
+		// we successfully created the directory and we're done
+		return nil
 	}
 
 	if !stat.IsDir() {

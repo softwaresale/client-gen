@@ -1,0 +1,55 @@
+{
+  "name": "Person",
+  "endpoints": [
+    {
+      "name": "getAll",
+      "endpoint": "/api/v1/people",
+      "method": "GET",
+      "pathVariables": {},
+      "queryVariables": {},
+      "requestBody": {
+        "type": {
+          "typeID": "void"
+        },
+        "required": false
+      },
+      "responseBody": {
+        "type": {
+          "typeID": "array",
+          "inner": [
+            {
+              "typeID": "user",
+              "reference": "PersonModel"
+            }
+          ]
+        },
+        "required": true
+      }
+    }
+  ],
+  "entities": [
+    {
+      "name": "PersonModel",
+      "properties": {
+        "id": {
+          "type": {
+            "typeID": "string"
+          },
+          "required": true
+        },
+        "name": {
+          "type": {
+            "typeID": "string"
+          },
+          "required": true
+        },
+        "age": {
+          "type": {
+            "typeID": "integer"
+          },
+          "required": true
+        }
+      }
+    }
+  ]
+}
