@@ -4,5 +4,4 @@ package codegen
 type ServiceDefinition struct {
 	Name      string        `json:"name"`      // defines the name of the service. Don't include any suffixes
 	Endpoints []APIEndpoint `json:"endpoints"` // defines all endpoints defined by the controller
-	Entities  []EntitySpec  `json:"entities"`  // defines any dependent types used by the controller
 }
