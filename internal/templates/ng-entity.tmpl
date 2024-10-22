@@ -1,0 +1,8 @@
+
+{{ define "Entity" }}
+export interface {{ .Name }} {
+    {{ range $propName, $propSpec := .Properties }}
+        {{- $propName }}{{- if not $propSpec.Required -}} ? {{- end -}}: {{ ConvertType $propSpec.Type }};
+    {{end}}
+}
+{{end}}

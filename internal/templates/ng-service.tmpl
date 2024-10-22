@@ -1,0 +1,36 @@
+
+{{- define "HttpRequest"}}
+        return this.{{- .HttpClientVar -}}.{{- .HttpMethod -}}<{{- .ResponseType -}}>(`{{- ParseTemplate .URITemplate -}}`{{ if HasRequestBody .RequestBodyValue }}, {{ .RequestBodyValue }}{{end}});
+{{- end}}
+
+{{- define "RequestMethod" }}
+    {{ .RequestName -}}({{if .HasInput }} {{ .InputVarName }}: {{ .RequestInputType }} {{end}}): Observable<{{ .ResponseType }}> {
+        {{- template "HttpRequest" .HttpRequest }}
+    }
+{{- end}}
+/*
+    This file is auto generated. DO NOT MODIFY IT BY HAND.
+*/
+
+import { HttpClient } from "@angular/common/http";
+import { inject, Injectable } from "@angular/core";
+import { Observable } from "rxjs";
+
+{{ template "Imports" .Imports }}
+
+{{ range $inputDef := .InputTypes }}
+    {{- if $inputDef.IsValid }}
+        {{- template "Entity" $inputDef -}}
+    {{end -}}
+{{end}}
+
+@Injectable({
+    providedIn: 'root',
+})
+export class {{ .ServiceName -}}Service {
+    /** Default injected HTTP client */
+    private readonly {{ .HttpClientVar }} = inject(HttpClient);
+    {{- range $method := .Methods }}
+        {{ template "RequestMethod" $method -}}
+    {{end}}
+}
