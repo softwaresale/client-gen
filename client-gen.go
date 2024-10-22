@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	codegen2 "github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/codegen"
 	"github.com/softwaresale/client-gen/v2/internal/templates"
 	"os"
 )
@@ -71,7 +71,7 @@ func main() {
 
 	outputDirectory := fmt.Sprintf("./output/%s", apiDef.Name)
 
-	compiler := codegen2.APICompiler{
+	compiler := codegen.APICompiler{
 		Generator:  ngServiceGen,
 		OutputPath: outputDirectory,
 	}
@@ -82,16 +82,16 @@ func main() {
 	}
 }
 
-func readAPIDefinition(path string) (codegen2.APIDefinition, error) {
+func readAPIDefinition(path string) (codegen.APIDefinition, error) {
 	serviceFileContents, err := os.ReadFile(path)
 	if err != nil {
-		return codegen2.APIDefinition{}, fmt.Errorf("failed to open API definition file: %w", err)
+		return codegen.APIDefinition{}, fmt.Errorf("failed to open API definition file: %w", err)
 	}
 
-	var apiDef codegen2.APIDefinition
+	var apiDef codegen.APIDefinition
 	err = json.Unmarshal(serviceFileContents, &apiDef)
 	if err != nil {
-		return codegen2.APIDefinition{}, fmt.Errorf("failed to parse API definition file: %w", err)
+		return codegen.APIDefinition{}, fmt.Errorf("failed to parse API definition file: %w", err)
 	}
 
 	return apiDef, nil
