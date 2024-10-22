@@ -167,6 +167,7 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 
 	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
 	serviceTmpl = template.Must(serviceTmpl.Parse(importsTemplateText))
+	serviceTmpl = template.Must(serviceTmpl.Parse(entityTemplateText))
 
 	standaloneEntityTemplate := `{{ template "Entity" . }}`
 	entityTmpl := template.Must(template.New("NGEntity").Funcs(funcMap).Parse(entityTemplateText))

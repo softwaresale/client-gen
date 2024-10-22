@@ -15,13 +15,13 @@ type IServiceGenerator interface {
 	GenerateEntity(writer io.Writer, entity EntitySpec, outputPath string, resolver UserTypeResolver) error
 }
 
-// ServiceCompiler compiles a service into a set of target files
-type ServiceCompiler struct {
+// APICompiler compiles a service into a set of target files
+type APICompiler struct {
 	Generator  IServiceGenerator // generates a target service
 	OutputPath string
 }
 
-func (compiler *ServiceCompiler) Compile(service ServiceDefinition) error {
+func (compiler *APICompiler) Compile(api APIDefinition) error {
 	err := setupOutputDirectory(compiler.OutputPath)
 	if err != nil {
 		return fmt.Errorf("failed to setup output directory: %w", err)
@@ -31,7 +31,7 @@ func (compiler *ServiceCompiler) Compile(service ServiceDefinition) error {
 	typeResolver := NewUserTypeResolver()
 
 	// create all dependent entities
-	for _, entitySpec := range service.Entities {
+	for _, entitySpec := range api.Entities {
 		// create an output file
 		entityFile, entityFileName, _, err := createOutputFile(compiler.OutputPath, entitySpec.Name, "model")
 		if err != nil {
@@ -48,22 +48,34 @@ func (compiler *ServiceCompiler) Compile(service ServiceDefinition) error {
 		typeResolver.RegisterType(entitySpec, entityFileName)
 	}
 
-	// create the service implementation
-	implFile, _, servicePath, err := createOutputFile(compiler.OutputPath, service.Name, "service")
-	if err != nil {
-		return fmt.Errorf("failed to create service: %w", err)
-	}
-	defer utils.SafeClose(implFile)
+	for _, service := range api.Services {
+		implFile, _, servicePath, err := createOutputFile(compiler.OutputPath, service.Name, "service")
+		if err != nil {
+			return fmt.Errorf("failed to create api: %w", err)
+		}
 
-	err = compiler.Generator.GenerateService(implFile, service, servicePath, typeResolver)
-	if err != nil {
-		return fmt.Errorf("failed to generate service: %w", err)
+		// create the api implementation for each service in the API
+		err = compiler.writeServiceToFile(implFile, service, servicePath, typeResolver)
+		if err != nil {
+			return fmt.Errorf("failed to write service: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func (compiler *ServiceCompiler) writeEntityToFile(file *os.File, spec EntitySpec, specPath string, resolver UserTypeResolver) error {
+func (compiler *APICompiler) writeServiceToFile(file *os.File, service ServiceDefinition, servicePath string, typeResolver UserTypeResolver) error {
+	var err error
+	defer utils.SafeClose(file)
+	err = compiler.Generator.GenerateService(file, service, servicePath, typeResolver)
+	if err != nil {
+		return fmt.Errorf("failed to generate api: %w", err)
+	}
+
+	return nil
+}
+
+func (compiler *APICompiler) writeEntityToFile(file *os.File, spec EntitySpec, specPath string, resolver UserTypeResolver) error {
 	defer utils.SafeClose(file)
 
 	err := compiler.Generator.GenerateEntity(file, spec, specPath, resolver)

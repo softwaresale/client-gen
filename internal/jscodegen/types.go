@@ -24,6 +24,10 @@ func (mapper JSTypeMapper) Convert(dtype codegen.DynamicType) (string, error) {
 		typeStr = "boolean"
 	case codegen.TypeID_USER:
 		typeStr = dtype.Reference
+	case codegen.TypeID_TIMESTAMP:
+		typeStr = "Date"
+	case codegen.TypeID_ANY:
+		typeStr = "any"
 	case codegen.TypeID_ARRAY:
 		// get the inner type
 		innerTypeStr, err := mapper.Convert(dtype.ArrayElementTp())

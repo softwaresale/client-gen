@@ -1,21 +1,23 @@
 package codegen
 
 const (
-	TypeID_VOID    = "void"
-	TypeID_STRING  = "string"
-	TypeID_INTEGER = "integer"
-	TypeID_FLOAT   = "float"
-	TypeID_BOOLEAN = "boolean"
-	TypeID_USER    = "user"
-	TypeID_ARRAY   = "array"
-	TypeID_GENERIC = "generic"
+	TypeID_VOID      = "VOID"
+	TypeID_STRING    = "STRING"
+	TypeID_INTEGER   = "INTEGER"
+	TypeID_FLOAT     = "FLOAT"
+	TypeID_BOOLEAN   = "BOOLEAN"
+	TypeID_USER      = "USER"
+	TypeID_ARRAY     = "ARRAY"
+	TypeID_GENERIC   = "GENERIC"
+	TypeID_TIMESTAMP = "TIMESTAMP"
+	TypeID_ANY       = "ANY"
 )
 
 // DynamicType specifies a dynamic type that is specified by the user
 type DynamicType struct {
 	TypeID    string        `json:"typeID"`    // An identifier for this type. Comes from predefined enum
 	Reference string        `json:"reference"` // Used by different types, references to this entity
-	Inner     []DynamicType `json:"inner"`     // Related types, used by generics
+	Inner     []DynamicType `json:"nested"`    // Related types, used by generics
 }
 
 func (tp DynamicType) IsVoid() bool {
