@@ -1,11 +1,10 @@
-package templates
+package jscodegen
 
 import (
 	_ "embed"
 	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/softwaresale/client-gen/v2/internal/codegen"
-	"github.com/softwaresale/client-gen/v2/internal/jscodegen"
 	"io"
 	"strings"
 	"text/template"
@@ -24,11 +23,11 @@ var standaloneEntityTemplateText string
 var importsTemplateText string
 
 type HttpRequestDef struct {
-	HttpClientVar    string      // the name of the variable that defines the HTTP client in use
-	HttpMethod       string      // The HTTP method used by this request
-	ResponseType     string      // the type string of our response
-	URITemplate      URITemplate // our URI template. This gets mapped into a uri string
-	RequestBodyValue string      // The value to read the body type
+	HttpClientVar    string              // the name of the variable that defines the HTTP client in use
+	HttpMethod       string              // The HTTP method used by this request
+	ResponseType     string              // the type string of our response
+	URITemplate      codegen.URITemplate // our URI template. This gets mapped into a uri string
+	RequestBodyValue string              // The value to read the body type
 }
 
 func hasRequestBody(def string) bool {
@@ -73,11 +72,11 @@ type NGServiceGenerator struct {
 // NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
 func NewNGServiceGenerator() *NGServiceGenerator {
 
-	mapper := jscodegen.JSTypeMapper{}
+	mapper := JSTypeMapper{}
 
 	funcMap := template.FuncMap{
 		"HasRequestBody": hasRequestBody,
-		"ParseTemplate":  FormatTemplate,
+		"ParseTemplate":  codegen.FormatTemplate,
 		"ConvertType":    mapper.Convert,
 	}
 
@@ -106,7 +105,7 @@ func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codeg
 
 func translateService(service codegen.ServiceDefinition, outputPath string, importResolver codegen.ImportManager) (ServiceDef, error) {
 
-	typeMapper := jscodegen.JSTypeMapper{}
+	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
 
 	var methods []RequestMethodDef
@@ -146,7 +145,7 @@ func translateService(service codegen.ServiceDefinition, outputPath string, impo
 				HttpClientVar: httpClientVar,
 				HttpMethod:    mapHttpEndpoint(endpoint.Method),
 				ResponseType:  responseType,
-				URITemplate: URITemplate{
+				URITemplate: codegen.URITemplate{
 					Template: endpoint.Endpoint,
 					VarMapper: func(pathVar string) (string, error) {
 						return fmt.Sprintf("${%s.%s}", inputVarName, pathVar), nil
@@ -162,7 +161,7 @@ func translateService(service codegen.ServiceDefinition, outputPath string, impo
 	inputImportMap := importResolver.GetEntityImports(inputs...)
 	serviceImportMap := importResolver.GetServiceImports(service)
 
-	importMap := codegen.UnionImports(jscodegen.CombineTSImports, inputImportMap, serviceImportMap)
+	importMap := codegen.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
 
 	return ServiceDef{
 		ServiceName:   service.Name,

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/codegen"
 	"github.com/softwaresale/client-gen/v2/internal/jscodegen"
-	"github.com/softwaresale/client-gen/v2/internal/templates"
 	"os"
 )
 
@@ -68,7 +67,7 @@ func main() {
 		return
 	}
 
-	ngServiceGen := templates.NewNGServiceGenerator()
+	ngServiceGen := jscodegen.NewNGServiceGenerator()
 
 	outputDirectory := fmt.Sprintf("./output/%s", apiDef.Name)
 	ngImportMgr := jscodegen.NewTSImportManager()
