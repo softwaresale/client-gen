@@ -1,5 +1,7 @@
 package codegen
 
+import mapset "github.com/deckarep/golang-set/v2"
+
 const (
 	TypeID_VOID      = "VOID"
 	TypeID_STRING    = "STRING"
@@ -37,13 +39,16 @@ func (tp DynamicType) ArrayElementTp() DynamicType {
 }
 
 func (tp DynamicType) TypeReferences() []string {
-	references := []string{tp.Reference}
+	references := mapset.NewSet[string](tp.Reference)
 	for _, inner := range tp.Inner {
 		inner := inner.TypeReferences()
-		references = append(references, inner...)
+		references.Append(inner...)
 	}
 
-	return references
+	// remove the empty string -- we do not care about this.
+	references.Remove("")
+
+	return references.ToSlice()
 }
 
 // ITypeMapper provides an interface for mapping dynamic types into language-specific types.
