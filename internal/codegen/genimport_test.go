@@ -3,6 +3,7 @@ package codegen
 import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/stretchr/testify/assert"
+	"slices"
 	"testing"
 )
 
@@ -25,9 +26,12 @@ func CombineExampleImports(imports []GenericImport) GenericImport {
 		unique.Append(imp.ProvidedEntities()...)
 	}
 
+	uniqueSlice := unique.ToSlice()
+	slices.Sort(uniqueSlice)
+
 	return &ExampleImport{
 		ProviderName: imports[0].Provider(),
-		Provides:     unique.ToSlice(),
+		Provides:     uniqueSlice,
 	}
 }
 
@@ -78,7 +82,7 @@ func TestUnionImports_SuccessfullyUnions(t *testing.T) {
 
 	expectedMap := map[string][]string{
 		"pkg1": {"e1", "e2", "e3"},
-		"pkg3": {"e7", "e5"},
+		"pkg3": {"e5", "e7"},
 		"pkg2": {"e10"},
 	}
 
