@@ -1,9 +1,5 @@
 {{ define "Imports" }}
-{{- range $path, $entities := . }}
-import {
-    {{ range $entity := $entities }}
-        {{- $entity -}},
-    {{- end}}
-} from '{{$path}}';
+{{- range $import := . }}
+import { {{ range $entity := $import.ProvidedEntities }} {{- $entity -}}, {{- end}} } from '{{ $import.Provider }}';
 {{- end -}}
 {{- end -}}
