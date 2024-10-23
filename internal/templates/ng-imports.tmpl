@@ -1,9 +1,0 @@
-{{ define "Imports" }}
-{{- range $path, $entities := . }}
-import {
-    {{ range $entity := $entities }}
-        {{- $entity -}},
-    {{- end}}
-} from '{{$path}}';
-{{- end -}}
-{{- end -}}

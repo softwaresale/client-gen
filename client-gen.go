@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	codegen2 "github.com/softwaresale/client-gen/v2/internal/codegen"
-	"github.com/softwaresale/client-gen/v2/internal/templates"
+	"github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/jscodegen"
 	"os"
 )
 
@@ -61,126 +61,40 @@ func main() {
 		return
 	}
 
-	service, err := readServiceDefinition(args.InputSpec)
+	apiDef, err := readAPIDefinition(args.InputSpec)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
-	/*
-		service := codegen2.ServiceDefinition{
-			Name: "ModelsService",
-			Endpoints: []codegen2.APIEndpoint{
-				{
-					Name:     "getModels",
-					Endpoint: "/api/v1/person/{{age}}/name/{{name}}/somethingelse",
-					Method:   http.MethodGet,
-					PathVariables: map[string]codegen2.RequestValue{
-						"age": {
-							Type: codegen2.DynamicType{
-								TypeID: codegen2.TypeID_STRING,
-							},
-							Required: false,
-						},
-						"name": {
-							Type: codegen2.DynamicType{
-								TypeID: codegen2.TypeID_STRING,
-							},
-							Required: true,
-						},
-					},
-					RequestBody: codegen2.RequestValue{
-						Type: codegen2.DynamicType{
-							TypeID: codegen2.TypeID_VOID,
-						},
-						Required: false,
-					},
-					ResponseBody: codegen2.RequestValue{
-						Type: codegen2.DynamicType{
-							TypeID:    codegen2.TypeID_ARRAY,
-							Reference: "",
-							Inner: []codegen2.DynamicType{
-								{
-									TypeID:    codegen2.TypeID_USER,
-									Reference: "PersonModel",
-								},
-							},
-						},
-					},
-				},
-				{
-					Name:     "createModel",
-					Endpoint: "/api/v1/person",
-					Method:   http.MethodPost,
-					RequestBody: codegen2.RequestValue{
-						Type: codegen2.DynamicType{
-							TypeID:    codegen2.TypeID_USER,
-							Reference: "PersonModel",
-						},
-						Required: true,
-					},
-					ResponseBody: codegen2.RequestValue{
-						Type: codegen2.DynamicType{
-							TypeID:    codegen2.TypeID_USER,
-							Reference: "PersonModel",
-						},
-					},
-				},
-				{
-					Name:     "updateModel",
-					Endpoint: "/api/v1/person/{{id}}",
-					Method:   http.MethodPut,
-					PathVariables: map[string]codegen2.RequestValue{
-						"id": {
-							Type: codegen2.DynamicType{
-								TypeID: codegen2.TypeID_STRING,
-							},
-							Required: true,
-						},
-					},
-					RequestBody: codegen2.RequestValue{
-						Type: codegen2.DynamicType{
-							TypeID:    codegen2.TypeID_USER,
-							Reference: "PersonModel",
-						},
-						Required: true,
-					},
-					ResponseBody: codegen2.RequestValue{
-						Type: codegen2.DynamicType{
-							TypeID:    codegen2.TypeID_USER,
-							Reference: "PersonModel",
-						},
-						Required: true,
-					},
-				},
-			},
-		}
-	*/
+	ngServiceGen := jscodegen.NewNGServiceGenerator()
 
-	ngServiceGen := templates.NewNGServiceGenerator()
+	outputDirectory := fmt.Sprintf("./output/%s", apiDef.Name)
+	ngImportMgr := jscodegen.NewTSImportManager()
 
-	compiler := codegen2.ServiceCompiler{
-		Generator:  ngServiceGen,
-		OutputPath: "./output/",
+	compiler := codegen.APICompiler{
+		Generator:     ngServiceGen,
+		ImportManager: &ngImportMgr,
+		OutputPath:    outputDirectory,
 	}
 
-	err = compiler.Compile(service)
+	err = compiler.Compile(apiDef)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func readServiceDefinition(path string) (codegen2.ServiceDefinition, error) {
+func readAPIDefinition(path string) (codegen.APIDefinition, error) {
 	serviceFileContents, err := os.ReadFile(path)
 	if err != nil {
-		return codegen2.ServiceDefinition{}, fmt.Errorf("failed to open service definition file: %w", err)
+		return codegen.APIDefinition{}, fmt.Errorf("failed to open API definition file: %w", err)
 	}
 
-	var serviceDef codegen2.ServiceDefinition
-	err = json.Unmarshal(serviceFileContents, &serviceDef)
+	var apiDef codegen.APIDefinition
+	err = json.Unmarshal(serviceFileContents, &apiDef)
 	if err != nil {
-		return codegen2.ServiceDefinition{}, fmt.Errorf("failed to parse service definition file: %w", err)
+		return codegen.APIDefinition{}, fmt.Errorf("failed to parse API definition file: %w", err)
 	}
 
-	return serviceDef, nil
+	return apiDef, nil
 }

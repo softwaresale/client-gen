@@ -1,0 +1,5 @@
+{{ define "Imports" }}
+{{- range $import := . }}
+import { {{ range $entity := $import.ProvidedEntities }} {{- $entity -}}, {{- end}} } from '{{ $import.Provider }}';
+{{- end -}}
+{{- end -}}

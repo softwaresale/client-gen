@@ -1,11 +1,10 @@
-package templates
+package jscodegen
 
 import (
 	_ "embed"
 	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/softwaresale/client-gen/v2/internal/codegen"
-	"github.com/softwaresale/client-gen/v2/internal/jscodegen"
 	"io"
 	"strings"
 	"text/template"
@@ -17,15 +16,18 @@ var templateText string
 //go:embed ng-entity.tmpl
 var entityTemplateText string
 
+//go:embed ng-standalone-entity.tmpl
+var standaloneEntityTemplateText string
+
 //go:embed ng-imports.tmpl
 var importsTemplateText string
 
 type HttpRequestDef struct {
-	HttpClientVar    string      // the name of the variable that defines the HTTP client in use
-	HttpMethod       string      // The HTTP method used by this request
-	ResponseType     string      // the type string of our response
-	URITemplate      URITemplate // our URI template. This gets mapped into a uri string
-	RequestBodyValue string      // The value to read the body type
+	HttpClientVar    string              // the name of the variable that defines the HTTP client in use
+	HttpMethod       string              // The HTTP method used by this request
+	ResponseType     string              // the type string of our response
+	URITemplate      codegen.URITemplate // our URI template. This gets mapped into a uri string
+	RequestBodyValue string              // The value to read the body type
 }
 
 func hasRequestBody(def string) bool {
@@ -44,27 +46,66 @@ func (def RequestMethodDef) HasInput() bool {
 	return len(def.RequestInputType) > 0
 }
 
+// EntityDef defines the template for a standalone entity file
+type EntityDef struct {
+	Entity  codegen.EntitySpec      // the entity we are generating
+	Imports []codegen.GenericImport // imports used by this entity
+}
+
 type ServiceDef struct {
 	ServiceName   string
 	HttpClientVar string
 	InputTypes    []codegen.EntitySpec
 	Methods       []RequestMethodDef
-	Imports       map[string][]string
+	Imports       []codegen.GenericImport
 }
 
 func mapHttpEndpoint(method string) string {
 	return strings.ToLower(method)
 }
 
-func translate(service codegen.ServiceDefinition, outputPath string, resolver codegen.UserTypeResolver) (ServiceDef, error) {
+type NGServiceGenerator struct {
+	ngServiceTemplate *template.Template
+	ngEntityTemplate  *template.Template
+}
 
-	// figure out all imports up top
-	importMap, err := resolver.CreateImportMap([]string{}, outputPath)
-	if err != nil {
-		return ServiceDef{}, fmt.Errorf("failed to create import map: %w", err)
+// NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
+func NewNGServiceGenerator() *NGServiceGenerator {
+
+	mapper := JSTypeMapper{}
+
+	funcMap := template.FuncMap{
+		"HasRequestBody": hasRequestBody,
+		"ParseTemplate":  codegen.FormatTemplate,
+		"ConvertType":    mapper.Convert,
 	}
 
-	typeMapper := jscodegen.JSTypeMapper{}
+	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
+	serviceTmpl = template.Must(serviceTmpl.Parse(importsTemplateText))
+	serviceTmpl = template.Must(serviceTmpl.Parse(entityTemplateText))
+
+	entityTmpl := template.Must(template.New("NGEntity").Funcs(funcMap).Parse(entityTemplateText))
+	entityTmpl = template.Must(entityTmpl.Parse(importsTemplateText))
+	entityTmpl = template.Must(entityTmpl.Parse(standaloneEntityTemplateText))
+
+	return &NGServiceGenerator{
+		ngServiceTemplate: serviceTmpl,
+		ngEntityTemplate:  entityTmpl,
+	}
+}
+
+func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codegen.ServiceDefinition, outputPath string, resolver codegen.ImportManager) error {
+	translatedDef, err := translateService(def, outputPath, resolver)
+	if err != nil {
+		return fmt.Errorf("failed to translateService service definition: %w", err)
+	}
+
+	return generator.ngServiceTemplate.Execute(writer, translatedDef)
+}
+
+func translateService(service codegen.ServiceDefinition, outputPath string, importResolver codegen.ImportManager) (ServiceDef, error) {
+
+	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
 
 	var methods []RequestMethodDef
@@ -104,7 +145,7 @@ func translate(service codegen.ServiceDefinition, outputPath string, resolver co
 				HttpClientVar: httpClientVar,
 				HttpMethod:    mapHttpEndpoint(endpoint.Method),
 				ResponseType:  responseType,
-				URITemplate: URITemplate{
+				URITemplate: codegen.URITemplate{
 					Template: endpoint.Endpoint,
 					VarMapper: func(pathVar string) (string, error) {
 						return fmt.Sprintf("${%s.%s}", inputVarName, pathVar), nil
@@ -116,6 +157,11 @@ func translate(service codegen.ServiceDefinition, outputPath string, resolver co
 
 		methods = append(methods, methodDef)
 	}
+
+	inputImportMap := importResolver.GetEntityImports(inputs...)
+	serviceImportMap := importResolver.GetServiceImports(service)
+
+	importMap := codegen.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
 
 	return ServiceDef{
 		ServiceName:   service.Name,
@@ -149,44 +195,17 @@ func createInputType(endpoint codegen.APIEndpoint, bodyPropertyName string) (*co
 	}, nil
 }
 
-type NGServiceGenerator struct {
-	ngServiceTemplate *template.Template
-	ngEntityTemplate  *template.Template
+func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def codegen.EntitySpec, outputPath string, resolver codegen.ImportManager) error {
+	entity := translateEntity(def, resolver)
+	return generator.ngEntityTemplate.Execute(writer, entity)
 }
 
-// NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
-func NewNGServiceGenerator() *NGServiceGenerator {
+func translateEntity(spec codegen.EntitySpec, importResolver codegen.ImportManager) EntityDef {
 
-	mapper := jscodegen.JSTypeMapper{}
+	imports := importResolver.GetEntityImports(spec)
 
-	funcMap := template.FuncMap{
-		"HasRequestBody": hasRequestBody,
-		"ParseTemplate":  FormatTemplate,
-		"ConvertType":    mapper.Convert,
+	return EntityDef{
+		Entity:  spec,
+		Imports: imports,
 	}
-
-	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
-	serviceTmpl = template.Must(serviceTmpl.Parse(importsTemplateText))
-
-	standaloneEntityTemplate := `{{ template "Entity" . }}`
-	entityTmpl := template.Must(template.New("NGEntity").Funcs(funcMap).Parse(entityTemplateText))
-	entityTmpl = template.Must(entityTmpl.Parse(standaloneEntityTemplate))
-
-	return &NGServiceGenerator{
-		ngServiceTemplate: serviceTmpl,
-		ngEntityTemplate:  entityTmpl,
-	}
-}
-
-func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codegen.ServiceDefinition, outputPath string, resolver codegen.UserTypeResolver) error {
-	translatedDef, err := translate(def, outputPath, resolver)
-	if err != nil {
-		return fmt.Errorf("failed to translate service definition: %w", err)
-	}
-
-	return generator.ngServiceTemplate.Execute(writer, translatedDef)
-}
-
-func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def codegen.EntitySpec, outputPath string, resolver codegen.UserTypeResolver) error {
-	return generator.ngEntityTemplate.Execute(writer, def)
 }
