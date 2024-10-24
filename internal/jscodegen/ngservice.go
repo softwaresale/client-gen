@@ -22,6 +22,9 @@ var standaloneEntityTemplateText string
 //go:embed ng-imports.tmpl
 var importsTemplateText string
 
+//go:embed ng-config.tmpl
+var configTemplateText string
+
 type HttpRequestDef struct {
 	HttpClientVar    string              // the name of the variable that defines the HTTP client in use
 	HttpMethod       string              // The HTTP method used by this request
@@ -55,9 +58,16 @@ type EntityDef struct {
 type ServiceDef struct {
 	ServiceName   string
 	HttpClientVar string
+	ConfigType    string
+	ConfigVar     string
 	InputTypes    []codegen.EntitySpec
 	Methods       []RequestMethodDef
 	Imports       []codegen.GenericImport
+}
+
+type ConfigDef struct {
+	Name         string
+	ConfigEntity codegen.EntitySpec
 }
 
 func mapHttpEndpoint(method string) string {
@@ -67,6 +77,7 @@ func mapHttpEndpoint(method string) string {
 type NGServiceGenerator struct {
 	ngServiceTemplate *template.Template
 	ngEntityTemplate  *template.Template
+	ngConfigTemplate  *template.Template
 }
 
 // NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
@@ -78,6 +89,8 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 		"HasRequestBody": hasRequestBody,
 		"ParseTemplate":  codegen.FormatTemplate,
 		"ConvertType":    mapper.Convert,
+		"UpperCase":      strcase.ToScreamingSnake,
+		"CamelCase":      strcase.ToCamel,
 	}
 
 	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
@@ -88,9 +101,13 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 	entityTmpl = template.Must(entityTmpl.Parse(importsTemplateText))
 	entityTmpl = template.Must(entityTmpl.Parse(standaloneEntityTemplateText))
 
+	configTmpl := template.Must(template.New("NGConfig").Funcs(funcMap).Parse(configTemplateText))
+	configTmpl = template.Must(configTmpl.Parse(entityTemplateText))
+
 	return &NGServiceGenerator{
 		ngServiceTemplate: serviceTmpl,
 		ngEntityTemplate:  entityTmpl,
+		ngConfigTemplate:  configTmpl,
 	}
 }
 
@@ -107,6 +124,10 @@ func translateService(service codegen.ServiceDefinition, outputPath string, impo
 
 	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
+	configVar := "config"
+	baseURLVar := "baseURL"
+
+	// TODO find a convenient way to provide the config type here
 
 	var methods []RequestMethodDef
 	var inputs []codegen.EntitySpec
@@ -150,6 +171,7 @@ func translateService(service codegen.ServiceDefinition, outputPath string, impo
 					VarMapper: func(pathVar string) (string, error) {
 						return fmt.Sprintf("${%s.%s}", inputVarName, pathVar), nil
 					},
+					PathPrefix: fmt.Sprintf("${this.%s.%s}", configVar, baseURLVar),
 				},
 				RequestBodyValue: requestBodyValue,
 			},
@@ -161,11 +183,19 @@ func translateService(service codegen.ServiceDefinition, outputPath string, impo
 	inputImportMap := importResolver.GetEntityImports(inputs...)
 	serviceImportMap := importResolver.GetServiceImports(service)
 
-	importMap := codegen.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
+	// add an import for our config type
+	apiConfigImport, exists := importResolver.GetTypeImport("APIConfig")
+	if !exists {
+		panic("APIConfig type not registered")
+	}
+
+	importMap := codegen.UnionImports(CombineTSImports, inputImportMap, serviceImportMap, []codegen.GenericImport{apiConfigImport})
 
 	return ServiceDef{
 		ServiceName:   service.Name,
 		HttpClientVar: httpClientVar,
+		ConfigType:    "APIConfig", // TODO fix this hard-coding
+		ConfigVar:     configVar,
 		Methods:       methods,
 		InputTypes:    inputs,
 		Imports:       importMap,
@@ -207,5 +237,23 @@ func translateEntity(spec codegen.EntitySpec, importResolver codegen.ImportManag
 	return EntityDef{
 		Entity:  spec,
 		Imports: imports,
+	}
+}
+
+func (generator *NGServiceGenerator) GenerateConfig(writer io.Writer, definition codegen.APIConfig, outputPath string, resolver codegen.ImportManager) error {
+	configDef := translateConfig(definition)
+	return generator.ngConfigTemplate.Execute(writer, configDef)
+}
+
+func translateConfig(definition codegen.APIConfig) ConfigDef {
+
+	configEntity, err := definition.CreateConfigEntity()
+	if err != nil {
+		panic(err)
+	}
+
+	return ConfigDef{
+		Name:         "API",
+		ConfigEntity: configEntity,
 	}
 }

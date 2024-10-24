@@ -1,0 +1,15 @@
+
+import { Provider } from '@angular/core';
+
+/**
+ * API configuration for this API. Used to provide configuration
+ */
+{{ template "Entity" .ConfigEntity }}
+
+const defaultConfig: {{ .ConfigEntity.Name }} = {
+}
+
+export const provide{{- CamelCase .Name -}}APIConfiguration = (value: {{ .ConfigEntity.Name }} = defaultConfig): Provider => ({
+    provide: {{ .ConfigEntity.Name }},
+    useValue: value
+})
