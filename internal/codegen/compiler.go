@@ -10,21 +10,22 @@ import (
 	"strings"
 )
 
-// IServiceGenerator specifies a type that formats a service to an output
-type IServiceGenerator interface {
+// ServiceGenerator specifies a type that formats a service to an output
+type ServiceGenerator interface {
 	GenerateService(writer io.Writer, service ServiceDefinition, outputPath string, resolver ImportManager) error
 	GenerateEntity(writer io.Writer, entity EntitySpec, outputPath string, resolver ImportManager) error
 }
 
 // APICompiler compiles a service into a set of target files
 type APICompiler struct {
-	Generator     IServiceGenerator // generates a target service
-	ImportManager ImportManager     // helps us manage imports
+	Generator     ServiceGenerator             // generates a target service
+	ImportManager ImportManager                // helps us manage imports
+	FileOps       utils.CompilerFileOperations // Abstracts away how to perform file operations. This is mainly for testing
 	OutputPath    string
 }
 
 func (compiler *APICompiler) Compile(api APIDefinition) error {
-	err := setupOutputDirectory(compiler.OutputPath)
+	err := compiler.setupOutputDirectory(compiler.OutputPath)
 	if err != nil {
 		return fmt.Errorf("failed to setup output directory: %w", err)
 	}
@@ -35,7 +36,7 @@ func (compiler *APICompiler) Compile(api APIDefinition) error {
 	// create all dependent entities
 	for _, entitySpec := range api.Entities {
 		// create an output file
-		entityFile, entityFileName, _, err := createOutputFile(compiler.OutputPath, entitySpec.Name, "model")
+		entityFile, entityFileName, _, err := compiler.createOutputFile(compiler.OutputPath, entitySpec.Name, "model")
 		if err != nil {
 			return fmt.Errorf("failed to create entity file: %w", err)
 		}
@@ -47,7 +48,7 @@ func (compiler *APICompiler) Compile(api APIDefinition) error {
 	}
 
 	for _, service := range api.Services {
-		implFile, _, servicePath, err := createOutputFile(compiler.OutputPath, service.Name, "service")
+		implFile, _, servicePath, err := compiler.createOutputFile(compiler.OutputPath, service.Name, "service")
 		if err != nil {
 			return fmt.Errorf("failed to create api: %w", err)
 		}
@@ -106,10 +107,10 @@ func createOutputFilePath(objectName, objectType string) string {
 	return fmt.Sprintf("%s.%s.gen.ts", strcase.ToKebab(objectName), objectType)
 }
 
-func createOutputFile(basePath, objectName, objectType string) (*os.File, string, string, error) {
+func (compiler *APICompiler) createOutputFile(basePath, objectName, objectType string) (*os.File, string, string, error) {
 	fileName := createOutputFilePath(objectName, objectType)
 	filePath := filepath.Join(basePath, fileName)
-	file, err := os.Create(filePath)
+	file, err := compiler.FileOps.Create(filePath)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to create impl file: %w", err)
 	}
@@ -117,7 +118,7 @@ func createOutputFile(basePath, objectName, objectType string) (*os.File, string
 	return file, fileName, filePath, nil
 }
 
-func setupOutputDirectory(path string) error {
+func (compiler *APICompiler) setupOutputDirectory(path string) error {
 	var err error
 	if !filepath.IsAbs(path) {
 		path, err = filepath.Abs(path)
@@ -126,14 +127,14 @@ func setupOutputDirectory(path string) error {
 		}
 	}
 
-	stat, err := os.Stat(path)
+	stat, err := compiler.FileOps.Stat(path)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !compiler.FileOps.IsNotExist(err) {
 			return fmt.Errorf("failed to stat output path: %w", err)
 		}
 
 		// create the directory
-		err = os.Mkdir(path, os.ModePerm)
+		err = compiler.FileOps.Mkdir(path, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
