@@ -1,6 +1,10 @@
 package codegen
 
-import mapset "github.com/deckarep/golang-set/v2"
+import (
+	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
+	"reflect"
+)
 
 const (
 	TypeID_VOID      = "VOID"
@@ -49,6 +53,47 @@ func (tp DynamicType) TypeReferences() []string {
 	references.Remove("")
 
 	return references.ToSlice()
+}
+
+// MapTypeToDynamicType converts a Go type to a DynamicType
+func MapTypeToDynamicType(goTp reflect.Type) (DynamicType, error) {
+	var tp DynamicType
+
+	switch goTp.Kind() {
+	case reflect.Bool:
+		tp.TypeID = TypeID_BOOLEAN
+
+	case reflect.String:
+		tp.TypeID = TypeID_STRING
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		tp.TypeID = TypeID_INTEGER
+
+	case reflect.Float32, reflect.Float64:
+		tp.TypeID = TypeID_FLOAT
+
+	case reflect.Slice, reflect.Array:
+		tp.TypeID = TypeID_ARRAY
+		inner, err := MapTypeToDynamicType(goTp.Elem())
+		if err != nil {
+			return DynamicType{}, err
+		}
+		tp.Inner = []DynamicType{inner}
+
+	case reflect.Struct:
+		return DynamicType{}, fmt.Errorf("structures are not supported as types yet")
+
+	default:
+		return DynamicType{}, fmt.Errorf("unsupported type %s", goTp.Kind().String())
+	}
+
+	return tp, nil
+}
+
+// GetDynamicTypeForValue maps a go value into a DynamicType
+func GetDynamicTypeForValue(value any) (DynamicType, error) {
+	valueTp := reflect.TypeOf(value)
+	return MapTypeToDynamicType(valueTp)
 }
 
 // ITypeMapper provides an interface for mapping dynamic types into language-specific types.
