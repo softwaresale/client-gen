@@ -12,6 +12,7 @@ type GenericImport interface {
 type ImportManager interface {
 	RegisterProvider(providerName string)                        // RegisterProvider creates a new empty provider
 	RegisterType(providerName, typeName string)                  // RegisterType adds a type to the given provider
+	GetTypeImport(typeName string) (GenericImport, bool)         // GetTypeImport gets an import for the provided type. The bool determines if the type is registered
 	GetEntityImports(entity ...EntitySpec) []GenericImport       // GetEntityImports gets a list of imports needed by this collection of entities
 	GetServiceImports(service ServiceDefinition) []GenericImport // GetServiceImports get all entities needed for the given service
 }

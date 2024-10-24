@@ -67,6 +67,18 @@ func (importManager *TSImportManager) RegisterType(providerName, typeName string
 	importManager.typeFiles[typeName] = providerName
 }
 
+func (importManager *TSImportManager) GetTypeImport(typeName string) (codegen.GenericImport, bool) {
+	providerFile, exists := importManager.typeFiles[typeName]
+	if !exists {
+		return nil, false
+	}
+
+	return &TSImport{
+		File:          providerFile,
+		ProvidedTypes: []string{typeName},
+	}, true
+}
+
 func (importManager *TSImportManager) GetEntityImports(entities ...codegen.EntitySpec) []codegen.GenericImport {
 	// get unique entities referenced in the entity implementation
 	referencedEntities := mapset.NewSet[string]()
