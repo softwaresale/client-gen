@@ -14,6 +14,7 @@ import (
 type IServiceGenerator interface {
 	GenerateService(writer io.Writer, service ServiceDefinition, outputPath string, resolver ImportManager) error
 	GenerateEntity(writer io.Writer, entity EntitySpec, outputPath string, resolver ImportManager) error
+	GenerateConfig(writer io.Writer, definition APIConfig, outputPath string, resolver ImportManager) error
 }
 
 // APICompiler compiles a service into a set of target files
@@ -28,6 +29,26 @@ func (compiler *APICompiler) Compile(api APIDefinition) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup output directory: %w", err)
 	}
+
+	// create the API configuration entity
+	apiConfigEntity, err := api.Config.CreateConfigEntity()
+	if err != nil {
+		return fmt.Errorf("failed to create config entity: %w", err)
+	}
+
+	// generate our config
+	configFile, configFileName, _, err := createOutputFile(compiler.OutputPath, apiConfigEntity.Name, "config")
+	if err != nil {
+		return fmt.Errorf("failed to create config file: %w", err)
+	}
+
+	err = compiler.writeConfigToFile(configFile, api, configFileName)
+	if err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	// register our config entity
+	compiler.registerEntity(apiConfigEntity, "config")
 
 	// maps user types to paths that they can be imported from
 	compiler.registerEntities(api)
@@ -46,6 +67,7 @@ func (compiler *APICompiler) Compile(api APIDefinition) error {
 		}
 	}
 
+	// generate all services
 	for _, service := range api.Services {
 		implFile, _, servicePath, err := createOutputFile(compiler.OutputPath, service.Name, "service")
 		if err != nil {
@@ -67,10 +89,14 @@ func (compiler *APICompiler) Compile(api APIDefinition) error {
 // directory. This function just helps for generating imports
 func (compiler *APICompiler) registerEntities(api APIDefinition) {
 	for _, entity := range api.Entities {
-		outputFileName := createOutputFilePath(entity.Name, "model")
-		importProvider := formatProviderName(outputFileName)
-		compiler.ImportManager.RegisterType(importProvider, entity.Name)
+		compiler.registerEntity(entity, "model")
 	}
+}
+
+func (compiler *APICompiler) registerEntity(entity EntitySpec, objectType string) {
+	outputFileName := createOutputFilePath(entity.Name, objectType)
+	importProvider := formatProviderName(outputFileName)
+	compiler.ImportManager.RegisterType(importProvider, entity.Name)
 }
 
 // TODO i don't like this...
@@ -97,6 +123,17 @@ func (compiler *APICompiler) writeEntityToFile(file *os.File, spec EntitySpec, s
 	err := compiler.Generator.GenerateEntity(file, spec, specPath, compiler.ImportManager)
 	if err != nil {
 		return fmt.Errorf("failed to generate entity: %w", err)
+	}
+
+	return nil
+}
+
+func (compiler *APICompiler) writeConfigToFile(file *os.File, definition APIDefinition, definitionPath string) error {
+	defer utils.SafeClose(file)
+
+	err := compiler.Generator.GenerateConfig(file, definition.Config, definitionPath, compiler.ImportManager)
+	if err != nil {
+		return fmt.Errorf("failed to generate config: %w", err)
 	}
 
 	return nil
