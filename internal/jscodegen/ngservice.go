@@ -204,10 +204,14 @@ func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def types.
 
 func translateEntity(spec types.EntitySpec, importResolver imports.ImportManager) EntityDef {
 
-	imports := importResolver.GetEntityImports(spec)
+	entityImports := importResolver.GetEntityImports(spec)
 
 	return EntityDef{
 		Entity:  spec,
-		Imports: imports,
+		Imports: entityImports,
 	}
+}
+
+func (generator *NGServiceGenerator) GenerateConfig(writer io.Writer, config types.APIConfig, resolver imports.ImportManager) error {
+	panic("implement me")
 }

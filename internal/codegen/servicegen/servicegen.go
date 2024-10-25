@@ -12,4 +12,5 @@ import (
 type ServiceGenerator interface {
 	GenerateService(writer io.Writer, service types.ServiceDefinition, resolver imports.ImportManager) error
 	GenerateEntity(writer io.Writer, entity types.EntitySpec, resolver imports.ImportManager) error
+	GenerateConfig(writer io.Writer, config types.APIConfig, resolver imports.ImportManager) error
 }
