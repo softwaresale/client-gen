@@ -2,7 +2,7 @@ package jscodegen
 
 import (
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/codegen/imports"
 	"github.com/softwaresale/client-gen/v2/internal/types"
 )
 
@@ -19,7 +19,7 @@ func (imp *TSImport) ProvidedEntities() []string {
 	return imp.ProvidedTypes
 }
 
-func CombineTSImports(genericImport []codegen.GenericImport) codegen.GenericImport {
+func CombineTSImports(genericImport []imports.GenericImport) imports.GenericImport {
 	if len(genericImport) == 0 {
 		return nil
 	}
@@ -68,7 +68,7 @@ func (importManager *TSImportManager) RegisterType(providerName, typeName string
 	importManager.typeFiles[typeName] = providerName
 }
 
-func (importManager *TSImportManager) GetEntityImports(entities ...types.EntitySpec) []codegen.GenericImport {
+func (importManager *TSImportManager) GetEntityImports(entities ...types.EntitySpec) []imports.GenericImport {
 	// get unique entities referenced in the entity implementation
 	referencedEntities := mapset.NewSet[string]()
 	for _, entity := range entities {
@@ -80,7 +80,7 @@ func (importManager *TSImportManager) GetEntityImports(entities ...types.EntityS
 	return importManager.createImportsForReferencedTypes(referencedEntities)
 }
 
-func (importManager *TSImportManager) GetServiceImports(service types.ServiceDefinition) []codegen.GenericImport {
+func (importManager *TSImportManager) GetServiceImports(service types.ServiceDefinition) []imports.GenericImport {
 	referencedEntities := mapset.NewSet[string]()
 	for _, endpoint := range service.Endpoints {
 		referencedEntities.Append(endpoint.ResponseBody.Type.TypeReferences()...)
@@ -97,8 +97,8 @@ func (importManager *TSImportManager) GetServiceImports(service types.ServiceDef
 	return importManager.createImportsForReferencedTypes(referencedEntities)
 }
 
-func (importManager *TSImportManager) createImportsForReferencedTypes(referencedEntities mapset.Set[string]) []codegen.GenericImport {
-	var imports []codegen.GenericImport
+func (importManager *TSImportManager) createImportsForReferencedTypes(referencedEntities mapset.Set[string]) []imports.GenericImport {
+	var imports []imports.GenericImport
 
 	// get unique files
 	usedFiles := mapset.NewSet[string]()
