@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/softwaresale/client-gen/v2/internal/codegen"
-	"github.com/softwaresale/client-gen/v2/internal/codegen/outputs"
 	"github.com/softwaresale/client-gen/v2/internal/jscodegen"
 	"github.com/softwaresale/client-gen/v2/internal/types"
 	"os"
@@ -69,19 +67,9 @@ func main() {
 		return
 	}
 
-	ngServiceGen := jscodegen.NewNGServiceGenerator()
-
 	outputDirectory := fmt.Sprintf("./output/%s", apiDef.Name)
-	ngImportMgr := jscodegen.NewTSImportManager()
 
-	compiler := codegen.APICompiler{
-		Generator:     ngServiceGen,
-		ImportManager: &ngImportMgr,
-		OutputsManager: &outputs.DirectoryCompilerOutputsManager{
-			BasePath: outputDirectory,
-		},
-		OutputPath: outputDirectory,
-	}
+	compiler := jscodegen.NewNGCompiler(outputDirectory)
 
 	err = compiler.Compile(apiDef)
 	if err != nil {
