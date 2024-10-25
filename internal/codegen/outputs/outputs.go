@@ -8,6 +8,7 @@ import (
 // CompilerOutputWriter is an output that we can write our targets to. They are writable and can provide a location
 type CompilerOutputWriter interface {
 	io.Writer
+	io.Closer
 	CompilerOutputLocation
 }
 

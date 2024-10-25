@@ -38,6 +38,10 @@ func (f FileCompilerOutput) Name() string {
 	return f.absPath.Name()
 }
 
+func (f FileCompilerOutput) Close() error {
+	return f.file.Close()
+}
+
 const (
 	OutputType_SERVICE = "service"
 	OutputType_MODEL   = "model"

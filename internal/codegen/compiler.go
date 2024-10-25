@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/codegen/outputs"
 	"github.com/softwaresale/client-gen/v2/internal/types"
+	"github.com/softwaresale/client-gen/v2/internal/utils"
 	"io"
 	"strings"
 )
@@ -39,29 +40,49 @@ func (compiler *APICompiler) Compile(api types.APIDefinition) error {
 
 	// create all dependent entities
 	for _, entitySpec := range api.Entities {
-
-		entityWriter, err := compiler.OutputsManager.CreateModelOutput(entitySpec)
+		err = compiler.compileEntity(entitySpec)
 		if err != nil {
-			return fmt.Errorf("failed to create model output: %w", err)
-		}
-
-		err = compiler.Generator.GenerateEntity(entityWriter, entitySpec, compiler.ImportManager)
-		if err != nil {
-			return fmt.Errorf("failed to write entity: %w", err)
+			return fmt.Errorf("failed to compile entity '%s': %w", entitySpec.Name, err)
 		}
 	}
 
 	for _, service := range api.Services {
-		implWriter, err := compiler.OutputsManager.CreateServiceOutput(service)
+		err = compiler.compileService(service)
 		if err != nil {
-			return fmt.Errorf("failed to create api: %w", err)
+			return fmt.Errorf("failed to compile service '%s': %w", service.Name, err)
 		}
+	}
 
-		// create the api implementation for each service in the API
-		err = compiler.Generator.GenerateService(implWriter, service, compiler.ImportManager)
-		if err != nil {
-			return fmt.Errorf("failed to write service: %w", err)
-		}
+	return nil
+}
+
+func (compiler *APICompiler) compileEntity(entitySpec types.EntitySpec) error {
+	entityWriter, err := compiler.OutputsManager.CreateModelOutput(entitySpec)
+	if err != nil {
+		return fmt.Errorf("failed to create model output: %w", err)
+	}
+
+	defer utils.SafeClose(entityWriter)
+
+	err = compiler.Generator.GenerateEntity(entityWriter, entitySpec, compiler.ImportManager)
+	if err != nil {
+		return fmt.Errorf("failed to write entity: %w", err)
+	}
+
+	return nil
+}
+
+func (compiler *APICompiler) compileService(service types.ServiceDefinition) error {
+	implWriter, err := compiler.OutputsManager.CreateServiceOutput(service)
+	if err != nil {
+		return fmt.Errorf("failed to create service output: %w", err)
+	}
+	defer utils.SafeClose(implWriter)
+
+	// create the api implementation for each service in the API
+	err = compiler.Generator.GenerateService(implWriter, service, compiler.ImportManager)
+	if err != nil {
+		return fmt.Errorf("failed to write service: %w", err)
 	}
 
 	return nil
