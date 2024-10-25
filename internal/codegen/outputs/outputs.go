@@ -30,4 +30,6 @@ type CompilerOutputsManager interface {
 	ComputeServiceLocation(serviceDef types.ServiceDefinition) (CompilerOutputLocation, error) // figure out where this service will be located without actually creating the output
 	CreateModelOutput(model types.EntitySpec) (CompilerOutputWriter, error)                    // create a writer to write this model entity to
 	ComputeModelLocation(model types.EntitySpec) (CompilerOutputLocation, error)               // figure out where this entity will be located without actually creating the output
+	CreateConfigOutput(config types.APIConfig) (CompilerOutputWriter, error)                   // create a writer to write the API config
+	ComputeConfigLocation(config types.APIConfig) (CompilerOutputLocation, error)              // figure out where the API config will be located
 }
