@@ -2,23 +2,18 @@ package codegen
 
 import (
 	"fmt"
+	"github.com/softwaresale/client-gen/v2/internal/codegen/imports"
 	"github.com/softwaresale/client-gen/v2/internal/codegen/outputs"
+	"github.com/softwaresale/client-gen/v2/internal/codegen/servicegen"
 	"github.com/softwaresale/client-gen/v2/internal/types"
 	"github.com/softwaresale/client-gen/v2/internal/utils"
-	"io"
 	"strings"
 )
 
-// ServiceGenerator specifies a type that formats a service to an output
-type ServiceGenerator interface {
-	GenerateService(writer io.Writer, service types.ServiceDefinition, resolver ImportManager) error
-	GenerateEntity(writer io.Writer, entity types.EntitySpec, resolver ImportManager) error
-}
-
 // APICompiler compiles a service into a set of target files
 type APICompiler struct {
-	Generator      ServiceGenerator               // generates a target service
-	ImportManager  ImportManager                  // helps us manage imports
+	Generator      servicegen.ServiceGenerator    // generates a target service
+	ImportManager  imports.ImportManager          // helps us manage imports
 	OutputsManager outputs.CompilerOutputsManager // facilitates writing compiler outputs
 	OutputPath     string
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/codegen/imports"
 	"github.com/softwaresale/client-gen/v2/internal/types"
 	"io"
 	"strings"
@@ -50,7 +51,7 @@ func (def RequestMethodDef) HasInput() bool {
 // EntityDef defines the template for a standalone entity file
 type EntityDef struct {
 	Entity  types.EntitySpec        // the entity we are generating
-	Imports []codegen.GenericImport // imports used by this entity
+	Imports []imports.GenericImport // imports used by this entity
 }
 
 type ServiceDef struct {
@@ -58,7 +59,7 @@ type ServiceDef struct {
 	HttpClientVar string
 	InputTypes    []types.EntitySpec
 	Methods       []RequestMethodDef
-	Imports       []codegen.GenericImport
+	Imports       []imports.GenericImport
 }
 
 func mapHttpEndpoint(method string) string {
@@ -95,7 +96,7 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 	}
 }
 
-func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def types.ServiceDefinition, resolver codegen.ImportManager) error {
+func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def types.ServiceDefinition, resolver imports.ImportManager) error {
 	translatedDef, err := translateService(def, resolver)
 	if err != nil {
 		return fmt.Errorf("failed to translateService service definition: %w", err)
@@ -104,7 +105,7 @@ func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def types
 	return generator.ngServiceTemplate.Execute(writer, translatedDef)
 }
 
-func translateService(service types.ServiceDefinition, importResolver codegen.ImportManager) (ServiceDef, error) {
+func translateService(service types.ServiceDefinition, importResolver imports.ImportManager) (ServiceDef, error) {
 
 	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
@@ -162,7 +163,7 @@ func translateService(service types.ServiceDefinition, importResolver codegen.Im
 	inputImportMap := importResolver.GetEntityImports(inputs...)
 	serviceImportMap := importResolver.GetServiceImports(service)
 
-	importMap := codegen.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
+	importMap := imports.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
 
 	return ServiceDef{
 		ServiceName:   service.Name,
@@ -196,12 +197,12 @@ func createInputType(endpoint types.APIEndpoint, bodyPropertyName string) (*type
 	}, nil
 }
 
-func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def types.EntitySpec, resolver codegen.ImportManager) error {
+func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def types.EntitySpec, resolver imports.ImportManager) error {
 	entity := translateEntity(def, resolver)
 	return generator.ngEntityTemplate.Execute(writer, entity)
 }
 
-func translateEntity(spec types.EntitySpec, importResolver codegen.ImportManager) EntityDef {
+func translateEntity(spec types.EntitySpec, importResolver imports.ImportManager) EntityDef {
 
 	imports := importResolver.GetEntityImports(spec)
 
