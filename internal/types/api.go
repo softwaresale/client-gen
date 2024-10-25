@@ -1,4 +1,4 @@
-package codegen
+package types
 
 // APIDefinition specifies an entire API, which consists of multiple services
 type APIDefinition struct {

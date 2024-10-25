@@ -1,4 +1,4 @@
-package codegen
+package types
 
 // RequestValue specifies a value that is passed in an API endpoint. Each value is typed and has optional
 // metadata

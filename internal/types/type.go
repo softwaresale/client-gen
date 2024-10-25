@@ -1,4 +1,4 @@
-package codegen
+package types
 
 import mapset "github.com/deckarep/golang-set/v2"
 

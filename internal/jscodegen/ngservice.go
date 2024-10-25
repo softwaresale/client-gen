@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/iancoleman/strcase"
 	"github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/types"
 	"io"
 	"strings"
 	"text/template"
@@ -48,14 +49,14 @@ func (def RequestMethodDef) HasInput() bool {
 
 // EntityDef defines the template for a standalone entity file
 type EntityDef struct {
-	Entity  codegen.EntitySpec      // the entity we are generating
+	Entity  types.EntitySpec        // the entity we are generating
 	Imports []codegen.GenericImport // imports used by this entity
 }
 
 type ServiceDef struct {
 	ServiceName   string
 	HttpClientVar string
-	InputTypes    []codegen.EntitySpec
+	InputTypes    []types.EntitySpec
 	Methods       []RequestMethodDef
 	Imports       []codegen.GenericImport
 }
@@ -94,7 +95,7 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 	}
 }
 
-func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codegen.ServiceDefinition, resolver codegen.ImportManager) error {
+func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def types.ServiceDefinition, resolver codegen.ImportManager) error {
 	translatedDef, err := translateService(def, resolver)
 	if err != nil {
 		return fmt.Errorf("failed to translateService service definition: %w", err)
@@ -103,13 +104,13 @@ func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codeg
 	return generator.ngServiceTemplate.Execute(writer, translatedDef)
 }
 
-func translateService(service codegen.ServiceDefinition, importResolver codegen.ImportManager) (ServiceDef, error) {
+func translateService(service types.ServiceDefinition, importResolver codegen.ImportManager) (ServiceDef, error) {
 
 	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
 
 	var methods []RequestMethodDef
-	var inputs []codegen.EntitySpec
+	var inputs []types.EntitySpec
 	for _, endpoint := range service.Endpoints {
 
 		inputVarName := "input"
@@ -172,35 +173,35 @@ func translateService(service codegen.ServiceDefinition, importResolver codegen.
 	}, nil
 }
 
-func createInputType(endpoint codegen.APIEndpoint, bodyPropertyName string) (*codegen.EntitySpec, error) {
+func createInputType(endpoint types.APIEndpoint, bodyPropertyName string) (*types.EntitySpec, error) {
 	inputTypeName := strcase.ToCamel(fmt.Sprintf("%sInput", endpoint.Name))
-	properties := make(map[string]codegen.PropertySpec)
+	properties := make(map[string]types.PropertySpec)
 	for prop, tp := range endpoint.PathVariables {
-		properties[prop] = codegen.PropertySpec{
+		properties[prop] = types.PropertySpec{
 			Type:     tp.Type,
 			Required: tp.Required,
 		}
 	}
 
 	if !endpoint.RequestBody.Type.IsVoid() {
-		properties[bodyPropertyName] = codegen.PropertySpec{
+		properties[bodyPropertyName] = types.PropertySpec{
 			Type:     endpoint.RequestBody.Type,
 			Required: endpoint.RequestBody.Required,
 		}
 	}
 
-	return &codegen.EntitySpec{
+	return &types.EntitySpec{
 		Name:       inputTypeName,
 		Properties: properties,
 	}, nil
 }
 
-func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def codegen.EntitySpec, resolver codegen.ImportManager) error {
+func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def types.EntitySpec, resolver codegen.ImportManager) error {
 	entity := translateEntity(def, resolver)
 	return generator.ngEntityTemplate.Execute(writer, entity)
 }
 
-func translateEntity(spec codegen.EntitySpec, importResolver codegen.ImportManager) EntityDef {
+func translateEntity(spec types.EntitySpec, importResolver codegen.ImportManager) EntityDef {
 
 	imports := importResolver.GetEntityImports(spec)
 

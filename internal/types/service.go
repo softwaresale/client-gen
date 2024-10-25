@@ -1,4 +1,4 @@
-package codegen
+package types
 
 // ServiceDefinition defines a service that consumes a controller
 type ServiceDefinition struct {

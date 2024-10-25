@@ -3,6 +3,7 @@ package jscodegen
 import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/types"
 )
 
 type TSImport struct {
@@ -67,7 +68,7 @@ func (importManager *TSImportManager) RegisterType(providerName, typeName string
 	importManager.typeFiles[typeName] = providerName
 }
 
-func (importManager *TSImportManager) GetEntityImports(entities ...codegen.EntitySpec) []codegen.GenericImport {
+func (importManager *TSImportManager) GetEntityImports(entities ...types.EntitySpec) []codegen.GenericImport {
 	// get unique entities referenced in the entity implementation
 	referencedEntities := mapset.NewSet[string]()
 	for _, entity := range entities {
@@ -79,7 +80,7 @@ func (importManager *TSImportManager) GetEntityImports(entities ...codegen.Entit
 	return importManager.createImportsForReferencedTypes(referencedEntities)
 }
 
-func (importManager *TSImportManager) GetServiceImports(service codegen.ServiceDefinition) []codegen.GenericImport {
+func (importManager *TSImportManager) GetServiceImports(service types.ServiceDefinition) []codegen.GenericImport {
 	referencedEntities := mapset.NewSet[string]()
 	for _, endpoint := range service.Endpoints {
 		referencedEntities.Append(endpoint.ResponseBody.Type.TypeReferences()...)

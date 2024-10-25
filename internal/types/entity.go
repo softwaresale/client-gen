@@ -1,4 +1,4 @@
-package codegen
+package types
 
 // PropertySpec specifies an entity property
 type PropertySpec struct {

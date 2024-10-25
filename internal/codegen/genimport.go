@@ -1,5 +1,7 @@
 package codegen
 
+import "github.com/softwaresale/client-gen/v2/internal/types"
+
 // GenericImport provides an interface for generalized imports. An import accesses a number of
 // entities from a given provider
 type GenericImport interface {
@@ -10,10 +12,10 @@ type GenericImport interface {
 // ImportManager provides an interface for 1) registering imports and types they provide and 2) figuring out
 // which types need to be imported for the given type
 type ImportManager interface {
-	RegisterProvider(providerName string)                        // RegisterProvider creates a new empty provider
-	RegisterType(providerName, typeName string)                  // RegisterType adds a type to the given provider
-	GetEntityImports(entity ...EntitySpec) []GenericImport       // GetEntityImports gets a list of imports needed by this collection of entities
-	GetServiceImports(service ServiceDefinition) []GenericImport // GetServiceImports get all entities needed for the given service
+	RegisterProvider(providerName string)                              // RegisterProvider creates a new empty provider
+	RegisterType(providerName, typeName string)                        // RegisterType adds a type to the given provider
+	GetEntityImports(entity ...types.EntitySpec) []GenericImport       // GetEntityImports gets a list of imports needed by this collection of entities
+	GetServiceImports(service types.ServiceDefinition) []GenericImport // GetServiceImports get all entities needed for the given service
 }
 
 // ImportCombiner combines multiple imports with the same provider into a single import. Implementation

@@ -2,33 +2,33 @@ package jscodegen
 
 import (
 	"fmt"
-	"github.com/softwaresale/client-gen/v2/internal/codegen"
+	"github.com/softwaresale/client-gen/v2/internal/types"
 	"strings"
 )
 
 type JSTypeMapper struct {
 }
 
-func (mapper JSTypeMapper) Convert(dtype codegen.DynamicType) (string, error) {
+func (mapper JSTypeMapper) Convert(dtype types.DynamicType) (string, error) {
 	var typeStr string
 	switch dtype.TypeID {
-	case codegen.TypeID_VOID:
+	case types.TypeID_VOID:
 		typeStr = "void"
-	case codegen.TypeID_STRING:
+	case types.TypeID_STRING:
 		typeStr = "string"
-	case codegen.TypeID_INTEGER:
+	case types.TypeID_INTEGER:
 		fallthrough
-	case codegen.TypeID_FLOAT:
+	case types.TypeID_FLOAT:
 		typeStr = "number"
-	case codegen.TypeID_BOOLEAN:
+	case types.TypeID_BOOLEAN:
 		typeStr = "boolean"
-	case codegen.TypeID_USER:
+	case types.TypeID_USER:
 		typeStr = dtype.Reference
-	case codegen.TypeID_TIMESTAMP:
+	case types.TypeID_TIMESTAMP:
 		typeStr = "Date"
-	case codegen.TypeID_ANY:
+	case types.TypeID_ANY:
 		typeStr = "any"
-	case codegen.TypeID_ARRAY:
+	case types.TypeID_ARRAY:
 		// get the inner type
 		innerTypeStr, err := mapper.Convert(dtype.ArrayElementTp())
 		if err != nil {
@@ -36,7 +36,7 @@ func (mapper JSTypeMapper) Convert(dtype codegen.DynamicType) (string, error) {
 		}
 		typeStr = fmt.Sprintf("%s[]", innerTypeStr)
 
-	case codegen.TypeID_GENERIC:
+	case types.TypeID_GENERIC:
 		var genericParams []string
 		for genericIdx, inner := range dtype.Inner {
 			innerTypeStr, err := mapper.Convert(inner)
