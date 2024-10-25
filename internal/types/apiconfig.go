@@ -37,3 +37,14 @@ func (apiConfig APIConfig) CreateEntitySpec() (EntitySpec, error) {
 
 	return entity, nil
 }
+
+// ConfigEntityInitializer creates an initializer that can be used to initialize the config entity
+func (apiConfig APIConfig) ConfigEntityInitializer() (EntityInitializer, error) {
+	initializer := EntityInitializer{
+		PropertyValues: map[string]StaticValue{
+			"baseURL": StaticValue(apiConfig.BaseURL),
+		},
+	}
+
+	return initializer, nil
+}

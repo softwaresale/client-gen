@@ -67,8 +67,9 @@ type ServiceDef struct {
 
 // ConfigDef defines what we need to model for our API configuration providers
 type ConfigDef struct {
-	APIName      string           // what the name of the overall API configuration is
-	ConfigEntity types.EntitySpec // The record that houses our configuration
+	APIName      string                  // what the name of the overall API configuration is
+	ConfigEntity types.EntitySpec        // The record that houses our
+	ConfigInit   types.EntityInitializer // how to configure the default configuration
 }
 
 func mapHttpEndpoint(method string) string {
@@ -84,12 +85,14 @@ type NGServiceGenerator struct {
 // NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
 func NewNGServiceGenerator() *NGServiceGenerator {
 
-	mapper := JSTypeMapper{}
+	typeMapper := JSTypeMapper{}
+	valueMapper := JSValueMapper{}
 
 	funcMap := template.FuncMap{
 		"HasRequestBody": hasRequestBody,
 		"ParseTemplate":  codegen.FormatTemplate,
-		"ConvertType":    mapper.Convert,
+		"ConvertType":    typeMapper.Convert,
+		"ConvertValue":   valueMapper.Convert,
 	}
 
 	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
@@ -243,8 +246,14 @@ func (generator *NGServiceGenerator) translateConfig(config types.APIConfig, res
 		return nil, fmt.Errorf("failed to create API config entity: %w", err)
 	}
 
+	configInit, err := config.ConfigEntityInitializer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API config entity: %w", err)
+	}
+
 	return &ConfigDef{
 		APIName:      "",
 		ConfigEntity: configType,
+		ConfigInit:   configInit,
 	}, nil
 }

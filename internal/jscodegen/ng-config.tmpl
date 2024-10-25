@@ -6,6 +6,9 @@ import { Provider } from '@angular/core';
 {{ template "Entity" .ConfigEntity }}
 
 const defaultConfig: APIConfig = {
+{{ range $propertyName, $propertyValue := .ConfigInit.PropertyValues }}
+    {{ $propertyName }}: {{ ConvertValue $propertyValue }},
+{{end}}
 }
 
 export const provideAPIConfiguration = (configValue: APIConfig = defaultConfig): Provider => ({
