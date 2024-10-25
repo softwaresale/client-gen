@@ -12,8 +12,8 @@ type CompilerOutputWriter interface {
 }
 
 type CompilerOutputLocation interface {
-	Name() string              // get the name of the output
-	Location() (string, error) // Where this output is located
+	Name() string     // get the name of the output
+	Location() string // Where this output is located
 }
 
 // CompilerOutputsManager helps abstract away the details of creating files to write the compiler outputs to. Instead,

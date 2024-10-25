@@ -17,8 +17,8 @@ func (path FileCompilerOutputLocation) Name() string {
 	return filepath.Base(pathStr)
 }
 
-func (path FileCompilerOutputLocation) Location() (string, error) {
-	return string(path), nil
+func (path FileCompilerOutputLocation) Location() string {
+	return string(path)
 }
 
 type FileCompilerOutput struct {
@@ -30,7 +30,7 @@ func (f FileCompilerOutput) Write(p []byte) (int, error) {
 	return f.file.Write(p)
 }
 
-func (f FileCompilerOutput) Location() (string, error) {
+func (f FileCompilerOutput) Location() string {
 	return f.absPath.Location()
 }
 
