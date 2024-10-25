@@ -5,7 +5,7 @@ import "github.com/softwaresale/client-gen/v2/internal/types"
 // GenericImport provides an interface for generalized imports. An import accesses a number of
 // entities from a given provider
 //
-//go:generate mockery --name GenericImport --structname MockGenericImport --outpkg imports_mocks
+//go:generate mockery --name GenericImport --structname MockGenericImport --outpkg importsmocks
 type GenericImport interface {
 	ProvidedEntities() []string // ProvidedEntities gets the entities provided by this import
 	Provider() string           // Provider gets the name of this import provider
@@ -14,7 +14,7 @@ type GenericImport interface {
 // ImportManager provides an interface for 1) registering imports and types they provide and 2) figuring out
 // which types need to be imported for the given type
 //
-//go:generate mockery --name ImportManager --structname MockImportManager --outpkg imports_mocks
+//go:generate mockery --name ImportManager --structname MockImportManager --outpkg importsmocks
 type ImportManager interface {
 	RegisterProvider(providerName string)                              // RegisterProvider creates a new empty provider
 	RegisterType(providerName, typeName string)                        // RegisterType adds a type to the given provider
