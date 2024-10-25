@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -77,4 +78,42 @@ func TestDynamicType_ArrayElementTp_PanicsForNoInnerType(t *testing.T) {
 	assert.Panics(t, func() {
 		tp.ArrayElementTp()
 	})
+}
+
+func TestGoTypeToDynamicType_MapsString(t *testing.T) {
+	dtype, err := GoTypeToDynamicType(reflect.TypeOf("hello"))
+	assert.NoError(t, err)
+	assert.Equal(t, TypeID_STRING, dtype.TypeID)
+}
+
+func TestGoTypeToDynamicType_MapsInt(t *testing.T) {
+	dtype, err := GoTypeToDynamicType(reflect.TypeOf(42))
+	assert.NoError(t, err)
+	assert.Equal(t, TypeID_INTEGER, dtype.TypeID)
+}
+
+func TestGoTypeToDynamicType_MapsUint(t *testing.T) {
+	dtype, err := GoTypeToDynamicType(reflect.TypeOf(uint(42)))
+	assert.NoError(t, err)
+	assert.Equal(t, TypeID_INTEGER, dtype.TypeID)
+}
+
+func TestGoTypeToDynamicType_MapsFloat(t *testing.T) {
+	dtype, err := GoTypeToDynamicType(reflect.TypeOf(42.5))
+	assert.NoError(t, err)
+	assert.Equal(t, TypeID_FLOAT, dtype.TypeID)
+}
+
+func TestGoTypeToDynamicType_MapsBool(t *testing.T) {
+	dtype, err := GoTypeToDynamicType(reflect.TypeOf(true))
+	assert.NoError(t, err)
+	assert.Equal(t, TypeID_BOOLEAN, dtype.TypeID)
+}
+
+func TestGoTypeToDynamicType_MapsSlice(t *testing.T) {
+	dtype, err := GoTypeToDynamicType(reflect.TypeOf([]string{}))
+	assert.NoError(t, err)
+	assert.Equal(t, TypeID_ARRAY, dtype.TypeID)
+	assert.NotEmpty(t, dtype.Inner)
+	assert.Equal(t, TypeID_STRING, dtype.Inner[0].TypeID)
 }
