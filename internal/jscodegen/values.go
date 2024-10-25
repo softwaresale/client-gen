@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/softwaresale/client-gen/v2/internal/types"
 	"reflect"
-	"strings"
 )
 
 type JSValueMapper struct{}
@@ -28,25 +27,28 @@ func (mapper JSValueMapper) Convert(value types.StaticValue) (string, error) {
 	case reflect.Float32, reflect.Float64:
 		return fmt.Sprintf("%f", value), nil
 
-	case reflect.Slice:
-		anySlice := value.([]any)
-		builder := strings.Builder{}
-		builder.WriteByte('[')
-		sliceLen := len(anySlice)
-		for idx, item := range anySlice {
-			itemValue, err := mapper.Convert(item)
-			if err != nil {
-				return "", fmt.Errorf("failed to map slice value: %w", err)
-			}
+		/*
+			case reflect.Slice:
+				sliceValue := reflect.ValueOf(value)
+				builder := strings.Builder{}
+				builder.WriteByte('[')
+				sliceLen := sliceValue.Len()
+				for i := 0; i < sliceLen; i++ {
+					item := sliceValue.Index(i)
+					itemValue, err := mapper.Convert(item)
+					if err != nil {
+						return "", fmt.Errorf("failed to map slice value: %w", err)
+					}
 
-			builder.WriteString(itemValue)
-			if idx < sliceLen-1 {
-				builder.WriteString(", ")
-			}
-		}
-		builder.WriteByte(']')
+					builder.WriteString(itemValue)
+					if i < sliceLen-1 {
+						builder.WriteString(", ")
+					}
+				}
+				builder.WriteByte(']')
 
-		return builder.String(), nil
+				return builder.String(), nil
+		*/
 
 	default:
 		return "", fmt.Errorf("failed to map value: %v", valueTp.Kind())
