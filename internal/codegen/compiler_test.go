@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	importsmocks "github.com/softwaresale/client-gen/v2/internal/codegen/imports/mocks"
 	outputsmocks "github.com/softwaresale/client-gen/v2/internal/codegen/outputs/mocks"
 	servicegenmocks "github.com/softwaresale/client-gen/v2/internal/codegen/servicegen/mocks"
@@ -17,8 +18,7 @@ var compiler APICompiler
 var apiDef types.APIDefinition
 
 func setup(t *testing.T) {
-
-	tmpDir := t.TempDir()
+	tmpDir := "output"
 
 	mockServiceGen = servicegenmocks.NewMockServiceGenerator(t)
 	mockImportMan = importsmocks.NewMockImportManager(t)
@@ -35,14 +35,28 @@ func setup(t *testing.T) {
 		Name:     "api",
 		Services: []types.ServiceDefinition{},
 		Entities: []types.EntitySpec{},
+		Config: types.APIConfig{
+			BaseURL: "http://localhost:8080",
+		},
 	}
 
 	// This will always be called
 	mockOutputMan.On("PrepareOutputDirectory", compiler.OutputPath).Return(nil).Once()
 }
 
+func configureDefaultAPIConfig(t *testing.T) {
+	outputName := "config"
+	mockConfigOutput := outputsmocks.NewMockCompilerOutputWriter(t)
+	mockConfigOutput.On("Name").Return(outputName).Once()
+	mockConfigOutput.On("Close").Return(nil).Once()
+	mockOutputMan.On("CreateConfigOutput", apiDef.Config).Return(mockConfigOutput, nil).Once()
+	mockImportMan.On("RegisterType", fmt.Sprintf("./%s", outputName), "APIConfig").Return().Once()
+	mockServiceGen.On("GenerateConfig", mockConfigOutput, apiDef.Config, mockImportMan).Return(nil).Once()
+}
+
 func TestAPICompiler_Compile_DoesNothing(t *testing.T) {
 	setup(t)
+	configureDefaultAPIConfig(t)
 
 	err := compiler.Compile(apiDef)
 	assert.NoError(t, err)
@@ -53,6 +67,7 @@ func TestAPICompiler_Compile_DoesNothing(t *testing.T) {
 
 func TestAPICompiler_Compile_GeneratesAnEntity(t *testing.T) {
 	setup(t)
+	configureDefaultAPIConfig(t)
 
 	// no properties
 	entity1 := types.EntitySpec{
@@ -81,6 +96,7 @@ func TestAPICompiler_Compile_GeneratesAnEntity(t *testing.T) {
 
 func TestAPICompiler_Compile_GeneratesAService(t *testing.T) {
 	setup(t)
+	configureDefaultAPIConfig(t)
 
 	service1 := types.ServiceDefinition{
 		Name: "service1",
