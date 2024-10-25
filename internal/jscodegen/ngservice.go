@@ -94,8 +94,8 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 	}
 }
 
-func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codegen.ServiceDefinition, outputPath string, resolver codegen.ImportManager) error {
-	translatedDef, err := translateService(def, outputPath, resolver)
+func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codegen.ServiceDefinition, resolver codegen.ImportManager) error {
+	translatedDef, err := translateService(def, resolver)
 	if err != nil {
 		return fmt.Errorf("failed to translateService service definition: %w", err)
 	}
@@ -103,7 +103,7 @@ func (generator *NGServiceGenerator) GenerateService(writer io.Writer, def codeg
 	return generator.ngServiceTemplate.Execute(writer, translatedDef)
 }
 
-func translateService(service codegen.ServiceDefinition, outputPath string, importResolver codegen.ImportManager) (ServiceDef, error) {
+func translateService(service codegen.ServiceDefinition, importResolver codegen.ImportManager) (ServiceDef, error) {
 
 	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
@@ -195,7 +195,7 @@ func createInputType(endpoint codegen.APIEndpoint, bodyPropertyName string) (*co
 	}, nil
 }
 
-func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def codegen.EntitySpec, outputPath string, resolver codegen.ImportManager) error {
+func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def codegen.EntitySpec, resolver codegen.ImportManager) error {
 	entity := translateEntity(def, resolver)
 	return generator.ngEntityTemplate.Execute(writer, entity)
 }
