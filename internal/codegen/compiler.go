@@ -22,9 +22,16 @@ func (compiler *APICompiler) Compile(api types.APIDefinition) error {
 
 	var err error
 
+	// Prepare the output destination. This is where all generated compiler outputs will go
 	err = compiler.OutputsManager.PrepareOutputDirectory(compiler.OutputPath)
 	if err != nil {
 		return fmt.Errorf("failed to setup output directory: %w", err)
+	}
+
+	// register the API configuration as a type
+	err = compiler.compileConfig(api.Config)
+	if err != nil {
+		return fmt.Errorf("failed to compile config: %w", err)
 	}
 
 	// maps user types to paths that they can be imported from
@@ -41,6 +48,7 @@ func (compiler *APICompiler) Compile(api types.APIDefinition) error {
 		}
 	}
 
+	// Create all services
 	for _, service := range api.Services {
 		err = compiler.compileService(service)
 		if err != nil {
@@ -78,6 +86,33 @@ func (compiler *APICompiler) compileService(service types.ServiceDefinition) err
 	err = compiler.Generator.GenerateService(implWriter, service, compiler.ImportManager)
 	if err != nil {
 		return fmt.Errorf("failed to write service: %w", err)
+	}
+
+	return nil
+}
+
+func (compiler *APICompiler) compileConfig(config types.APIConfig) error {
+
+	// register the API configuration type
+	configEntitySpec, err := config.CreateEntitySpec()
+	if err != nil {
+		return fmt.Errorf("failed to create entity spec: %w", err)
+	}
+
+	configWriter, err := compiler.OutputsManager.CreateConfigOutput(config)
+	if err != nil {
+		return fmt.Errorf("failed to create config output: %w", err)
+	}
+	defer utils.SafeClose(configWriter)
+
+	// register the configuration type
+	providerName := formatProviderName(configWriter.Name())
+	compiler.ImportManager.RegisterType(providerName, configEntitySpec.Name)
+
+	// generate the configuration
+	err = compiler.Generator.GenerateConfig(configWriter, config, compiler.ImportManager)
+	if err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
 	}
 
 	return nil

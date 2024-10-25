@@ -1,0 +1,14 @@
+/*
+    This file was auto-generated. Do not modify by hand
+*/
+import { Provider } from '@angular/core';
+
+{{ template "Entity" .ConfigEntity }}
+
+const defaultConfig: APIConfig = {
+}
+
+export const provideAPIConfiguration = (configValue: APIConfig = defaultConfig): Provider => ({
+    provide: APIConfig,
+    useValue: configValue
+})
