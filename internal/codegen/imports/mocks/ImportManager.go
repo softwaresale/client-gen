@@ -40,6 +40,36 @@ func (_m *MockImportManager) GetEntityImports(entity ...types.EntitySpec) []impo
 	return r0
 }
 
+// GetImportForType provides a mock function with given fields: typeName
+func (_m *MockImportManager) GetImportForType(typeName string) (imports.GenericImport, error) {
+	ret := _m.Called(typeName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetImportForType")
+	}
+
+	var r0 imports.GenericImport
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (imports.GenericImport, error)); ok {
+		return rf(typeName)
+	}
+	if rf, ok := ret.Get(0).(func(string) imports.GenericImport); ok {
+		r0 = rf(typeName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(imports.GenericImport)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(typeName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetServiceImports provides a mock function with given fields: service
 func (_m *MockImportManager) GetServiceImports(service types.ServiceDefinition) []imports.GenericImport {
 	ret := _m.Called(service)
