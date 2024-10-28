@@ -1,6 +1,7 @@
 package jscodegen
 
 import (
+	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/softwaresale/client-gen/v2/internal/codegen/imports"
 	"github.com/softwaresale/client-gen/v2/internal/types"
@@ -95,6 +96,18 @@ func (importManager *TSImportManager) GetServiceImports(service types.ServiceDef
 	}
 
 	return importManager.createImportsForReferencedTypes(referencedEntities)
+}
+
+func (importManager *TSImportManager) GetImportForType(typeName string) (imports.GenericImport, error) {
+	providingFile, exists := importManager.typeFiles[typeName]
+	if !exists {
+		return nil, fmt.Errorf("type '%s' is not registered", typeName)
+	}
+
+	return &TSImport{
+		File:          providingFile,
+		ProvidedTypes: []string{typeName},
+	}, nil
 }
 
 func (importManager *TSImportManager) createImportsForReferencedTypes(referencedEntities mapset.Set[string]) []imports.GenericImport {

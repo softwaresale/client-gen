@@ -24,6 +24,9 @@ var standaloneEntityTemplateText string
 //go:embed ng-imports.tmpl
 var importsTemplateText string
 
+//go:embed ng-config.tmpl
+var configTemplateText string
+
 type HttpRequestDef struct {
 	HttpClientVar    string              // the name of the variable that defines the HTTP client in use
 	HttpMethod       string              // The HTTP method used by this request
@@ -57,9 +60,18 @@ type EntityDef struct {
 type ServiceDef struct {
 	ServiceName   string
 	HttpClientVar string
+	APIConfigType string
+	APIConfigVar  string
 	InputTypes    []types.EntitySpec
 	Methods       []RequestMethodDef
 	Imports       []imports.GenericImport
+}
+
+// ConfigDef defines what we need to model for our API configuration providers
+type ConfigDef struct {
+	APIName      string                  // what the name of the overall API configuration is
+	ConfigEntity types.EntitySpec        // The record that houses our
+	ConfigInit   types.EntityInitializer // how to configure the default configuration
 }
 
 func mapHttpEndpoint(method string) string {
@@ -69,17 +81,20 @@ func mapHttpEndpoint(method string) string {
 type NGServiceGenerator struct {
 	ngServiceTemplate *template.Template
 	ngEntityTemplate  *template.Template
+	ngConfigTemplate  *template.Template
 }
 
 // NewNGServiceGenerator creates a new NGService generator, which can be used to generate services
 func NewNGServiceGenerator() *NGServiceGenerator {
 
-	mapper := JSTypeMapper{}
+	typeMapper := JSTypeMapper{}
+	valueMapper := JSValueMapper{}
 
 	funcMap := template.FuncMap{
 		"HasRequestBody": hasRequestBody,
 		"ParseTemplate":  codegen.FormatTemplate,
-		"ConvertType":    mapper.Convert,
+		"ConvertType":    typeMapper.Convert,
+		"ConvertValue":   valueMapper.Convert,
 	}
 
 	serviceTmpl := template.Must(template.New("NGService").Funcs(funcMap).Parse(templateText))
@@ -90,9 +105,13 @@ func NewNGServiceGenerator() *NGServiceGenerator {
 	entityTmpl = template.Must(entityTmpl.Parse(importsTemplateText))
 	entityTmpl = template.Must(entityTmpl.Parse(standaloneEntityTemplateText))
 
+	configTmpl := template.Must(template.New("NGConfig").Funcs(funcMap).Parse(configTemplateText))
+	configTmpl = template.Must(configTmpl.Parse(entityTemplateText))
+
 	return &NGServiceGenerator{
 		ngServiceTemplate: serviceTmpl,
 		ngEntityTemplate:  entityTmpl,
+		ngConfigTemplate:  configTmpl,
 	}
 }
 
@@ -109,6 +128,9 @@ func translateService(service types.ServiceDefinition, importResolver imports.Im
 
 	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
+	configVar := "config"
+	configTp := "APIConfig"
+	baseURLProperty := "baseURL"
 
 	var methods []RequestMethodDef
 	var inputs []types.EntitySpec
@@ -152,6 +174,7 @@ func translateService(service types.ServiceDefinition, importResolver imports.Im
 					VarMapper: func(pathVar string) (string, error) {
 						return fmt.Sprintf("${%s.%s}", inputVarName, pathVar), nil
 					},
+					Prefix: fmt.Sprintf("${this.%s.%s}", configVar, baseURLProperty),
 				},
 				RequestBodyValue: requestBodyValue,
 			},
@@ -162,12 +185,21 @@ func translateService(service types.ServiceDefinition, importResolver imports.Im
 
 	inputImportMap := importResolver.GetEntityImports(inputs...)
 	serviceImportMap := importResolver.GetServiceImports(service)
+	apiConfigImport, err := importResolver.GetImportForType(configTp)
+	if err != nil {
+		return ServiceDef{}, fmt.Errorf("failed to get api config import: %w", err)
+	}
 
-	importMap := imports.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
+	importMap := imports.UnionImports(CombineTSImports, inputImportMap, serviceImportMap, []imports.GenericImport{apiConfigImport})
+
+	// add an import for our API config
+	importMap = append(importMap)
 
 	return ServiceDef{
 		ServiceName:   service.Name,
 		HttpClientVar: httpClientVar,
+		APIConfigVar:  configVar,
+		APIConfigType: configTp,
 		Methods:       methods,
 		InputTypes:    inputs,
 		Imports:       importMap,
@@ -204,10 +236,39 @@ func (generator *NGServiceGenerator) GenerateEntity(writer io.Writer, def types.
 
 func translateEntity(spec types.EntitySpec, importResolver imports.ImportManager) EntityDef {
 
-	imports := importResolver.GetEntityImports(spec)
+	entityImports := importResolver.GetEntityImports(spec)
 
 	return EntityDef{
 		Entity:  spec,
-		Imports: imports,
+		Imports: entityImports,
 	}
+}
+
+func (generator *NGServiceGenerator) GenerateConfig(writer io.Writer, config types.APIConfig, resolver imports.ImportManager) error {
+	configDef, err := generator.translateConfig(config, resolver)
+	if err != nil {
+		return fmt.Errorf("failed to translate config def: %w", err)
+	}
+
+	return generator.ngConfigTemplate.Execute(writer, configDef)
+}
+
+func (generator *NGServiceGenerator) translateConfig(config types.APIConfig, resolver imports.ImportManager) (*ConfigDef, error) {
+
+	// create the type that will represent our config
+	configType, err := config.CreateEntitySpec()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API config entity: %w", err)
+	}
+
+	configInit, err := config.ConfigEntityInitializer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API config entity: %w", err)
+	}
+
+	return &ConfigDef{
+		APIName:      "",
+		ConfigEntity: configType,
+		ConfigInit:   configInit,
+	}, nil
 }

@@ -67,9 +67,7 @@ func main() {
 		return
 	}
 
-	outputDirectory := fmt.Sprintf("./output/%s", apiDef.Name)
-
-	compiler := jscodegen.NewNGCompiler(outputDirectory)
+	compiler := jscodegen.NewNGCompiler(args.OutputDir)
 
 	err = compiler.Compile(apiDef)
 	if err != nil {

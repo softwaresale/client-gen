@@ -119,3 +119,44 @@ func TestDirectoryCompilerOutputsManager_CreateServiceOutput_CorrectlyGeneratesL
 	assert.NoError(t, err)
 	assert.Greater(t, bytesWritten, 0)
 }
+
+func TestDirectoryCompilerOutputsManager_CreateConfigOutput_CorrectlyGeneratesLocation(t *testing.T) {
+	setup(t)
+
+	apiConfig := types.APIConfig{
+		BaseURL: "",
+	}
+
+	output, err := directoryCompilerOutput.CreateConfigOutput(apiConfig)
+	assert.NoError(t, err)
+
+	// TODO this might be cheating
+	expectedName := createOutputFileName("APIConfig", OutputType_CONFIG)
+	expectedLocation := filepath.Join(directoryCompilerOutput.BasePath, expectedName)
+
+	assert.Equal(t, expectedName, output.Name())
+	assert.Equal(t, expectedLocation, output.Location())
+
+	// also check that we can write to the output
+	bytesWritten, err := output.Write([]byte("Hello World"))
+	assert.NoError(t, err)
+	assert.Greater(t, bytesWritten, 0)
+}
+
+func TestDirectoryCompilerOutputsManager_ComputeConfigLocation_CorrectlyGeneratesLocation(t *testing.T) {
+	setup(t)
+
+	apiConfig := types.APIConfig{
+		BaseURL: "",
+	}
+
+	location, err := directoryCompilerOutput.ComputeConfigLocation(apiConfig)
+	assert.NoError(t, err)
+
+	// TODO this might be cheating
+	expectedName := createOutputFileName("APIConfig", OutputType_CONFIG)
+	expectedLocation := filepath.Join(directoryCompilerOutput.BasePath, expectedName)
+
+	assert.Equal(t, expectedName, location.Name())
+	assert.Equal(t, expectedLocation, location.Location())
+}

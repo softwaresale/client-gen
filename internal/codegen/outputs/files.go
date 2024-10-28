@@ -45,6 +45,7 @@ func (f FileCompilerOutput) Close() error {
 const (
 	OutputType_SERVICE = "service"
 	OutputType_MODEL   = "model"
+	OutputType_CONFIG  = "config"
 )
 
 // DirectoryCompilerOutputsManager outputs our files in a directory
@@ -96,6 +97,27 @@ func (outputs *DirectoryCompilerOutputsManager) CreateModelOutput(model types.En
 		file:    outputFile,
 		absPath: FileCompilerOutputLocation(outputAbsPath),
 	}, nil
+}
+
+func (outputs *DirectoryCompilerOutputsManager) CreateConfigOutput(config types.APIConfig) (CompilerOutputWriter, error) {
+	outputFile, outputAbsPath, err := outputs.createOutputFile("APIConfig", OutputType_CONFIG)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create output file: %w", err)
+	}
+
+	return &FileCompilerOutput{
+		file:    outputFile,
+		absPath: FileCompilerOutputLocation(outputAbsPath),
+	}, nil
+}
+
+func (outputs *DirectoryCompilerOutputsManager) ComputeConfigLocation(config types.APIConfig) (CompilerOutputLocation, error) {
+	outputAbsPath, err := outputs.createOutputFilePath("APIConfig", OutputType_CONFIG)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create output file: %w", err)
+	}
+
+	return FileCompilerOutputLocation(outputAbsPath), nil
 }
 
 func createOutputFileName(objectName, objectType string) string {
