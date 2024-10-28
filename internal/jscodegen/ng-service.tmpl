@@ -30,6 +30,8 @@ import { Observable } from "rxjs";
 export class {{ .ServiceName -}}Service {
     /** Default injected HTTP client */
     private readonly {{ .HttpClientVar }} = inject(HttpClient);
+    private readonly {{ .APIConfigVar }} = inject({{ .APIConfigType }});
+
     {{- range $method := .Methods }}
         {{ template "RequestMethod" $method -}}
     {{end}}

@@ -60,6 +60,8 @@ type EntityDef struct {
 type ServiceDef struct {
 	ServiceName   string
 	HttpClientVar string
+	APIConfigType string
+	APIConfigVar  string
 	InputTypes    []types.EntitySpec
 	Methods       []RequestMethodDef
 	Imports       []imports.GenericImport
@@ -126,6 +128,9 @@ func translateService(service types.ServiceDefinition, importResolver imports.Im
 
 	typeMapper := JSTypeMapper{}
 	httpClientVar := "http"
+	configVar := "config"
+	configTp := "APIConfig"
+	baseURLProperty := "baseURL"
 
 	var methods []RequestMethodDef
 	var inputs []types.EntitySpec
@@ -169,6 +174,7 @@ func translateService(service types.ServiceDefinition, importResolver imports.Im
 					VarMapper: func(pathVar string) (string, error) {
 						return fmt.Sprintf("${%s.%s}", inputVarName, pathVar), nil
 					},
+					Prefix: fmt.Sprintf("${this.%s.%s}", configVar, baseURLProperty),
 				},
 				RequestBodyValue: requestBodyValue,
 			},
@@ -179,12 +185,21 @@ func translateService(service types.ServiceDefinition, importResolver imports.Im
 
 	inputImportMap := importResolver.GetEntityImports(inputs...)
 	serviceImportMap := importResolver.GetServiceImports(service)
+	apiConfigImport, err := importResolver.GetImportForType(configTp)
+	if err != nil {
+		return ServiceDef{}, fmt.Errorf("failed to get api config import: %w", err)
+	}
 
-	importMap := imports.UnionImports(CombineTSImports, inputImportMap, serviceImportMap)
+	importMap := imports.UnionImports(CombineTSImports, inputImportMap, serviceImportMap, []imports.GenericImport{apiConfigImport})
+
+	// add an import for our API config
+	importMap = append(importMap)
 
 	return ServiceDef{
 		ServiceName:   service.Name,
 		HttpClientVar: httpClientVar,
+		APIConfigVar:  configVar,
+		APIConfigType: configTp,
 		Methods:       methods,
 		InputTypes:    inputs,
 		Imports:       importMap,

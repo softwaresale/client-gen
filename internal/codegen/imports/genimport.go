@@ -20,6 +20,7 @@ type ImportManager interface {
 	RegisterType(providerName, typeName string)                        // RegisterType adds a type to the given provider
 	GetEntityImports(entity ...types.EntitySpec) []GenericImport       // GetEntityImports gets a list of imports needed by this collection of entities
 	GetServiceImports(service types.ServiceDefinition) []GenericImport // GetServiceImports get all entities needed for the given service
+	GetImportForType(typeName string) (GenericImport, error)           // If the provided typename is registered, get an import for it
 }
 
 // ImportCombiner combines multiple imports with the same provider into a single import. Implementation
